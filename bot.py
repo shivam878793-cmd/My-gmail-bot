@@ -167,10 +167,11 @@ def check_and_release_expired_tasks():
     except Exception as e:
         print(f"Error in expiry checker: {e}")
 
-# 🚀 ASYNC MULTI-THREADED STOCK ALERT DISPATCHER (ZERO DATABASE LOCK GUARANTEE)
+# 🚀 THREADED ASYNC BROADCAST WORKER: COMPLETELY UNLOCKS MAIN THREAD & DATABASE
 def broadcast_stock_worker(added_count, current_total):
-    """Internal thread worker to dispatch messages safely in background context loops."""
+    """Internal thread execution loop to dispatch notifications safely without freezing the admin interface."""
     try:
+        # Pushing parameters safely outside active database connections
         conn = get_db_connection()
         user_rows = conn.execute("SELECT user_id FROM users").fetchall()
         conn.close()
@@ -196,10 +197,10 @@ def broadcast_stock_worker(added_count, current_total):
             except Exception:
                 continue
     except Exception as e:
-        print(f"Background worker failure sync log: {e}")
+        print(f"Background operational engine failure log: {e}")
 
 def auto_stock_broadcast_alert(added_count, current_total):
-    """Spawns an isolated asynchronous thread layout to bypass SQLite main thread blocking issues completely."""
+    """Spawns an asynchronous sub-thread loop so admin response displays instantly on panel click."""
     thr = threading.Thread(target=broadcast_stock_worker, args=(added_count, current_total))
     thr.start()
 
@@ -315,9 +316,10 @@ def add_task_via_telegram(message):
         count = conn.execute("SELECT COUNT(*) as total FROM task_pool WHERE status = 'AVAILABLE'").fetchone()['total']
         conn.close()
         
+        # Admin text responds instantly without freeze
         bot.send_message(ADMIN_ID, f"✅ **Single Task Added Successfully!**\n📦 Current Available Stock: {count} Gmails\n📢 *All users background threads launched!*")
         
-        # Safe async non-blocking stock alert execution
+        # Asynchronous trigger processing
         auto_stock_broadcast_alert(1, count)
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Error:** {e}")
@@ -344,6 +346,7 @@ def bulk_add_tasks(message):
         total_stock = conn.execute("SELECT COUNT(*) as total FROM task_pool WHERE status = 'AVAILABLE'").fetchone()['total']
         conn.close()
         
+        # Admin text responds instantly without freeze
         bot.send_message(ADMIN_ID, f"📦 **Bulk Import Status:**\n✅ Added: {success_count}\n🔥 Total Live Stock: {total_stock}\n📢 *All users background threads launched!*")
         
         if success_count > 0:
@@ -430,7 +433,7 @@ def admin_set_help_tutorial(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Set Help Error:** {e}")
 
-# --- FIXED HIGH PERFORMANCE ANTI-FLOOD BROADCAST CORE ---
+# --- FIXED HIGH PERFORMANCE ANTI-FLOOD MANUAL BROADCAST CORE ---
 @bot.message_handler(commands=['broadcast'])
 def admin_broadcast_flexible(message):
     if message.from_user.id != ADMIN_ID: return
@@ -609,7 +612,7 @@ def process_withdrawal_admin_review(message, amount):
     success_text = f"✅ **\"Withdrawal Request Submitted!\"**\n\n💰 **\"Amount:\"** ₹{amount}\n📱 **\"UPI ID:\"** {upi_id}\n\n⚠️ **\"Payment Under 24 Hours\"**"
     bot.send_message(message.chat.id, success_text, parse_mode="Markdown")
     
-    bot.send_message(WITHDRAW_CHANNEL_ID, f"🚨 **NEW WITHDRAWAL PENDING** 🚨\n\n👤 **User ID:** `{user_id}`\n💵 **Amount Deducated:** ₹{amount}\n📱 **UPI ID:** `{upi_id}`\n\nSelect action from panel:", parse_mode="Markdown", reply_markup=wd_markup)
+    bot.send_message(WITHDRAW_CHANNEL_ID, f"🚨 **NEW WITHDRAWAL PENDING** 🚨\n\n👤 **User ID:** `{user_id}`\n💵 **Amount Deducted:** ₹{amount}\n📱 **UPI ID:** `{upi_id}`\n\nSelect action from panel:", parse_mode="Markdown", reply_markup=wd_markup)
 
 # ──────────────────────────────────────────────────────────────────────
 # 🛰️ SECTION 10: ASYNCHRONOUS CALLBACK CONTROLLERS
