@@ -74,7 +74,7 @@ def init_db():
         )
     ''')
     
-    # Static installation insertion loops for master parameters
+    # Static master parameter initialization
     cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('tutorial', '📹 **Help & Tutorial Video:**\\n\\n[No video link set yet by admin. Use /sethelp to update]')")
     
     conn.commit()
@@ -369,7 +369,7 @@ def admin_edit_task(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Edit Task Error:** {e}")
 
-# ⚙️ SYSTEM REPAIR: ABSOLUTE CORE FIX FOR TUTORIAL ENGINE INSERTS
+# ⚙️ FINAL CONTEXT SYNC CORE: UPDATES AND STABILIZES THE SYSTEM OVERRIDE PREFERENCES
 @bot.message_handler(commands=['sethelp'])
 def admin_set_help_tutorial(message):
     if message.from_user.id != ADMIN_ID: return
@@ -379,7 +379,6 @@ def admin_set_help_tutorial(message):
             bot.send_message(ADMIN_ID, "❌ **Format:** `/sethelp Text or custom tutorial link strings`")
             return
         conn = get_db_connection()
-        # Direct clean insertion sync to relational settings index mapping parameters
         conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('tutorial', ?)", (new_content,))
         conn.commit()
         conn.close()
@@ -508,7 +507,7 @@ def handle_text_messages(message):
         else:
             bot.send_message(message.chat.id, f"❌ **WITHDRAWAL DENIED!**\n\n⚠️ Bot me minimum withdrawal limit **₹15** hai.\n💰 Aapka available balance sirf **₹{user['balance']}** hai. Aur tasks complete karein!")
             
-    # ⚙️ FIXED INTERACTION LOGIC FOR TUTORIAL ROUTING ENGINES DETECTIONS (MATCHED EXACT STRING LAYOUT)
+    # ⚙️ CRITICAL PATCH RESOLVED: TEXT ROUTER ALIGNED WITH THE MASTER LAYOUT SYSTEM INSTEAD OF BLANK DROPS
     elif message.text == "📚 Help & Tutorial":
         conn = get_db_connection()
         res = conn.execute("SELECT value FROM settings WHERE key = 'tutorial'").fetchone()
@@ -517,7 +516,6 @@ def handle_text_messages(message):
         bot.send_message(message.chat.id, content, parse_mode="Markdown")
         
     elif message.text == "☎️ Contact Owner & Help":
-        # Fires up immediate responsive inline keyboard layout mapping directly to @Raka_01 profile link
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("📨 Click Here to Chat with Owner", url="https://t.me/Raka_01"))
         bot.send_message(
@@ -731,7 +729,10 @@ def handle_callbacks(call):
         bot.register_next_step_handler(msg, process_final_channel_proof, sid)
         conn.close()
 
-# --- CHANNEL PROOF ROUTER MANAGEMENT (19600.jpg SYSTEM) ---
+# ──────────────────────────────────────────────────────────────────────
+# 🛰️ SECTION 11: CHANNEL PROOF DESPATCH MANAGEMENT LAYERS (19600.jpg SYSTEM)
+# ──────────────────────────────────────────────────────────────────────
+
 def process_final_channel_proof(message, session_id):
     if not message.photo:
         bot.send_message(message.chat.id, "❌ **SUBMISSION ERROR!**\n\n⚠️ Proof verification ke liye sirf Photo/Screenshot format hi bhejni hogi. Process reset.")
@@ -763,6 +764,9 @@ def process_final_channel_proof(message, session_id):
     )
     bot.send_message(message.chat.id, "⏳ **Proof uploaded successfully! Aapka screenshot direct audit channel validation panel me bhej diya gaya hai. Next task turant shuru kar sakte hain!** 🎉")
 
-# --- START BOT ENGINE ---
-print("🚀 UI routers successfully synchronized with relational settings tracker blocks...")
+# ──────────────────────────────────────────────────────────────────────
+# 🛰️ SECTION 12: EXECUTION THREAD INITIALIZER
+# ──────────────────────────────────────────────────────────────────────
+
+print("🚀 Core framework active. Mismatch patches deployed completely...")
 bot.infinity_polling()
