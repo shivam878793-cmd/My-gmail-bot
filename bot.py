@@ -147,15 +147,15 @@ def check_and_release_expired_tasks():
     except Exception as e:
         print(f"Error in expiry checker: {e}")
 
-# --- SYSTEM DASHBOARD KEYBOARDS (FIXED MID-MENU PLACEMENT BETWEEN WITHDRAW & TUTORIAL) ---
+# --- SYSTEM DASHBOARD KEYBOARDS ---
 def main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     btn1 = types.KeyboardButton("📨 Get Gmail Task")
     btn2 = types.KeyboardButton("💰 Wallet")
     btn3 = types.KeyboardButton("👥 Invite & Earn")
     btn4 = types.KeyboardButton("💸 Withdraw")
-    btn5 = types.KeyboardButton("☎️ Contact Owner") # Perfectly aligned mid-grid right below withdraw line
-    btn6 = types.KeyboardButton("📚 Help & Tutorial") # Sent precisely down at base line
+    btn5 = types.KeyboardButton("☎️ Contact Owner") 
+    btn6 = types.KeyboardButton("📚 Help & Tutorial")
     markup.add(btn1)
     markup.add(btn2, btn3)
     markup.add(btn4, btn5)
@@ -428,7 +428,13 @@ def handle_text_messages(message):
         return
         
     if message.text == "📨 Get Gmail Task":
-        bot.send_message(message.chat.id, "🗂️ **Select your task option below:**", reply_markup=task_options_menu())
+        # FEATURE 1: Custom text layout mapping info over selection keyboard as requested
+        info_header = (
+            "📌 **Note: Jo Single Gmail Banayege Unko ₹15 Milega. "
+            "Lekin Jo 10+ Gmail Complete Karega Usko ₹20/Gmail Milega!**\n\n"
+            "👇 Select your task option below to proceed:"
+        )
+        bot.send_message(message.chat.id, info_header, parse_mode="Markdown", reply_markup=task_options_menu())
     elif message.text == "💰 Wallet":
         conn = get_db_connection()
         user = conn.execute("SELECT balance, completed_single_tasks FROM users WHERE user_id = ?", (user_id,)).fetchone()
@@ -454,7 +460,6 @@ def handle_text_messages(message):
         content = res['value'] if res else "📹 **No Tutorial Set by Admin yet.**"
         bot.send_message(message.chat.id, content, parse_mode="Markdown")
     elif message.text == "☎️ Contact Owner":
-        # REDIRECT WITH STABLE DIRECT VIA USERNAME @Raka_01 (Moved precisely inside standard window)
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("📨 Direct Chat with Owner", url="https://t.me/Raka_01"))
         bot.send_message(message.chat.id, "☎️ **Aap niche diye gaye button par click karke direct owner (@Raka_01) se contact kar sakte hain:**", reply_markup=markup, parse_mode="Markdown")
@@ -543,27 +548,38 @@ def handle_callbacks(call):
         conn.close()
         return
 
+    # FEATURE 2: 19600.jpg Layout - Multi-Approve System based on Admin Inline Selection
     if call.data.startswith('adm_'):
         if user_id != ADMIN_ID: return
         parts = call.data.split('_')
         action, target_user, session_id, count_override = parts[1], int(parts[2]), int(parts[3]), int(parts[4])
+        
+        # Checking string to map the dynamic rates
+        selected_rate = 0.0
+        if action == "rate15":
+            selected_rate = 15.0
+        elif action == "rate20":
+            selected_rate = 20.0
+            
         conn = get_db_connection()
         session = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
         
-        if action == "app":
+        if action in ["rate15", "rate20"]:
             if session:
                 ids = session['task_id_list'].split(',')
                 for t_id in ids:
                     conn.execute("UPDATE task_pool SET status = 'COMPLETED' WHERE id = ?", (int(t_id),))
             
-            rate = 20.0 if count_override >= 10 else 15.0
-            final_reward = rate * count_override
-            
+            final_reward = selected_rate * count_override
             conn.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (final_reward, target_user))
+            if count_override == 1:
+                conn.execute("UPDATE users SET completed_single_tasks = completed_single_tasks + 1 WHERE user_id = ?", (target_user,))
             conn.execute("UPDATE sessions SET status = 'APPROVED' WHERE id = ?", (session_id,))
             conn.commit()
-            bot.edit_message_caption(f"🟢 **Approved! Paid ₹{final_reward} ({count_override} Gmails verified at ₹{int(rate)}/ea)**", chat_id, call.message.message_id)
-            bot.send_message(target_user, f"🎉 Admin ne aapka proof approve kar diya! ₹{final_reward} add ho gaye.")
+            
+            # Exact 19600.jpg confirmation layout print
+            bot.edit_message_caption(f"🟢 **Approved! Paid ₹{final_reward} ({count_override} Gmails verified at ₹{int(selected_rate)}/ea)**", chat_id, call.message.message_id)
+            bot.send_message(target_user, f"🎉 **Admin ne aapka proof approve kar diya hai! ₹{final_reward} wallet me add ho gaya.** 💰")
             
         elif action == "rej":
             if session:
@@ -573,7 +589,8 @@ def handle_callbacks(call):
             conn.execute("UPDATE sessions SET status = 'REJECTED' WHERE id = ?", (session_id,))
             conn.commit()
             bot.edit_message_caption("🔴 **Rejected & Destroyed From Stock!**", chat_id, call.message.message_id)
-            bot.send_message(target_user, "❌ Aapka proof reject ho gaya. Base accounts stock se delete ho gaye.")
+            bot.send_message(target_user, "❌ **Aapka proof reject ho gaya. Credentials stock se permanently delete ho gaye hain.**")
+            
         conn.close()
         return
 
@@ -616,7 +633,6 @@ def handle_callbacks(call):
         conn.commit()
         conn.close()
         
-        # STRAIGHT LINE RENDERING MATRIX WITHOUT DISRUPTIONS
         bulk_text = "📦 **0/10 GMAIL BULK TASK LIST** 📦\n\nNiche diye gaye saare gmails line se setup karein:\n\n"
         for index, t in enumerate(tasks, 1):
             bulk_text += f"{index}️⃣. 📧 `{t['gmail']}` | 🔑 `{t['password']}`\n"
@@ -658,22 +674,23 @@ def process_final_channel_proof(message, session_id):
     if not session: return
     ids_count = len(session['task_id_list'].split(','))
     
+    # FEATURE 2: Fixed inline configuration matching layout required in 19600.jpg
     admin_markup = types.InlineKeyboardMarkup()
     admin_markup.add(
-        types.InlineKeyboardButton("🟢 Approve All 10 (₹20/ea)", callback_data=f"adm_app_{user_id}_{session_id}_10"),
-        types.InlineKeyboardButton("🟡 Approve Partial 5 (₹15/ea)", callback_data=f"adm_app_{user_id}_{session_id}_5"),
+        types.InlineKeyboardButton("🟢 Approve at ₹15/Gmail", callback_data=f"adm_rate15_{user_id}_{session_id}_{ids_count}"),
+        types.InlineKeyboardButton("🟡 Approve at ₹20/Gmail", callback_data=f"adm_rate20_{user_id}_{session_id}_{ids_count}"),
         types.InlineKeyboardButton("🔴 Reject & Delete", callback_data=f"adm_rej_{user_id}_{session_id}_0")
     )
     
     bot.send_photo(
         GMAIL_CHANNEL_ID,
         file_id,
-        caption=f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n👤 **User ID:** `{user_id}`\n🗂️ **Batch Type:** {session['task_type']}\n📦 **Assigned Items:** {ids_count} Gmails\n\nAdmin review details manually:",
+        caption=f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n👤 **User ID:** `{user_id}`\n🗂️ **Batch Type:** {session['task_type']}\n📦 **Assigned Items:** {ids_count} Gmails\n\nAdmin select correct rate button from panel below:",
         reply_markup=admin_markup,
         parse_mode="Markdown"
     )
     bot.send_message(message.chat.id, "⏳ **Aapka screenshot proof channels validation panel me bhej diya gaya hai! Next task turant shuru kar sakte hain.** 🎉")
 
 # --- START BOT ENGINE ---
-print("🚀 Master configuration completed with zero bugs. Continuous listening active...")
+print("🚀 Payout layout and informational heading verified. Production master is running safely...")
 bot.infinity_polling()
