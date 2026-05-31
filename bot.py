@@ -265,6 +265,57 @@ def bulk_add_tasks(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Bulk Add Error:** {e}")
 
+# --- ADMIN FEATURE 3: DELETE & EDIT GMAIL TASKS ---
+@bot.message_handler(commands=['deletetask'])
+def admin_delete_task(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    try:
+        task_id = message.text.replace("/deletetask", "").strip()
+        if not task_id or not task_id.isdigit():
+            bot.send_message(ADMIN_ID, "❌ **Sahi Format Use Karein:**\n`/deletetask TASK_ID`", parse_mode="Markdown")
+            return
+        task_id = int(task_id)
+        conn = get_db_connection()
+        task_check = conn.execute("SELECT * FROM task_pool WHERE id = ?", (task_id,)).fetchone()
+        if not task_check:
+            bot.send_message(ADMIN_ID, f"❌ **Task ID `{task_id}` pool me nahi mili.**", parse_mode="Markdown")
+            conn.close()
+            return
+        conn.execute("DELETE FROM task_pool WHERE id = ?", (task_id,))
+        conn.commit()
+        conn.close()
+        bot.send_message(ADMIN_ID, f"🗑️ **Task Deleted Successfully!**\n\n🆔 **Task ID:** `{task_id}`\n📧 **Gmail:** `{task_check['gmail']}` has been removed.", parse_mode="Markdown")
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ **Delete Task Error:** {e}")
+
+@bot.message_handler(commands=['edittask'])
+def admin_edit_task(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    try:
+        raw_text = message.text.replace("/edittask", "").strip()
+        parts = raw_text.split(None, 1)
+        if len(parts) < 2 or ":" not in parts[1]:
+            bot.send_message(ADMIN_ID, "❌ **Sahi Format Use Karein:**\n`/edittask TASK_ID new_email@gmail.com:new_password`", parse_mode="Markdown")
+            return
+        task_id = int(parts[0])
+        new_credentials = parts[1].strip()
+        new_gmail, new_password = new_credentials.split(":", 1)
+        
+        conn = get_db_connection()
+        task_check = conn.execute("SELECT * FROM task_pool WHERE id = ?", (task_id,)).fetchone()
+        if not task_check:
+            bot.send_message(ADMIN_ID, f"❌ **Task ID `{task_id}` database me nahi mili.**", parse_mode="Markdown")
+            conn.close()
+            return
+        conn.execute("UPDATE task_pool SET gmail = ?, password = ? WHERE id = ?", (new_gmail.strip(), new_password.strip(), task_id))
+        conn.commit()
+        conn.close()
+        bot.send_message(ADMIN_ID, f"📝 **Task Updated Successfully!**\n\n🆔 **Task ID:** `{task_id}`\n📧 **New Gmail:** `{new_gmail.strip()}`\n🔑 **New Pass:** `{new_password.strip()}`", parse_mode="Markdown")
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ **Edit Task Error:** {e}")
+
 @bot.message_handler(commands=['broadcast'])
 def admin_broadcast(message):
     if message.from_user.id != ADMIN_ID:
@@ -322,6 +373,7 @@ def handle_text_messages(message):
         except:
             pass
     elif message.text == "📚 Help & Tutorial":
+        bot_info = bot.get_me()
         bot.send_message(message.chat.id, "📹 **Help & Tutorial Video:**\n\n[Yahan Admin Video/Tutorial Link Add Kar Sakta Hai] 🎞️")
 
 # --- WITHDRAWAL STEPS ---
@@ -346,22 +398,29 @@ def ask_upi_id(message):
     except ValueError:
         bot.send_message(message.chat.id, "❌ **Please ek sahi number (digits) hi dalein.**")
 
+# --- ADMIN FEATURE 1: SCREENSHOT (19587.jpg) EXACT MATCH WITHDRAWAL LAYOUT ---
 def process_withdrawal_admin_review(message, amount):
     user_id = message.from_user.id
     upi_id = message.text
     
-    # Withdrawal verify karne ke liye keyboard panel
     wd_markup = types.InlineKeyboardMarkup()
     wd_markup.add(
         types.InlineKeyboardButton("🟢 Approve Payout", callback_data=f"wd_app_{user_id}_{amount}"),
         types.InlineKeyboardButton("🔴 Reject Payout", callback_data=f"wd_rej_{user_id}_{amount}")
     )
     
-    # Pehle admin ko request bhejenge bina balance kaate (approval par katega)
-    bot.send_message(message.chat.id, "⏳ **Aapki Withdrawal Request Admin approval ke liye bhej di gayi hai. Kirpya thoda intezar karein!**")
+    # 19587.jpg layout confirmation update
+    success_text = (
+        f"✅ **\"Withdrawal Request Submitted!\"**\n\n"
+        f"💰 **\"Amount:\"** ₹{amount}\n"
+        f"📱 **\"UPI ID:\"** {upi_id}\n\n"
+        f"⚠️ **\"Payment Under 24 Hours\"** me aapke UPI par transfer kar di jayegi. Shurkiya! 🙏"
+    )
+    bot.send_message(message.chat.id, success_text, parse_mode="Markdown")
+    
     bot.send_message(
         ADMIN_ID, 
-        f"💰 💰 **NEW WITHDRAWAL REQUEST DETECTED** 💰 💰\n\n👤 **User ID:** `{user_id}`\n💵 **Requested Amount:** ₹{amount}\n📱 **Target UPI ID:** `{upi_id}`\n\nAction select karein niche diye panel se:", 
+        f"🚨 🚨 **NEW WITHDRAWAL PENDING REVEIW** 🚨 🚨\n\n👤 **User ID:** `{user_id}`\n💵 **Requested Amount:** ₹{amount}\n📱 **Target UPI ID:** `{upi_id}`\n\nAction select karein niche diye panel se:", 
         parse_mode="Markdown", 
         reply_markup=wd_markup
     )
@@ -394,7 +453,7 @@ def handle_callbacks(call):
                     bot.edit_message_text(f"🟢 **Withdrawal Approved Successfully!** Amount ₹{amount} has been debited.", chat_id, call.message.message_id)
                     bot.send_message(target_user, f"✅ **Aapka Withdrawal Approved ho gaya hai!**\n💰 Amount ₹{amount} aapke UPI par transfer kar diya gaya hai. Shurkiya! 🎉")
                     
-                    # Withdraw proof channel par post send karein
+                    # Withdraw proof channel logs
                     withdraw_log = f"💸 **SUCCESSFUL WITHDRAWAL** 💸\n\n👤 **User:** ID ending in `***{str(target_user)[-4:]}`\n💰 **Amount Paid:** ₹{amount}\n⚡ **Status:** Direct Transferred ✅\n🤖 **Bot:** @{bot.get_me().username}"
                     bot.send_message(WITHDRAW_CHANNEL_ID, withdraw_log, parse_mode="Markdown")
                 else:
@@ -437,7 +496,7 @@ def handle_callbacks(call):
                 bot.edit_message_caption("🟢 **Approved and Paid out!**", chat_id, call.message.message_id)
                 bot.send_message(target_user, f"🎉 **Congratulations! Admin ne aapka proof approve kar diya hai. Reward wallet me add ho gaya!** 💰")
                 
-                # Gmail channel pe validation screenshot proof auto forward karein
+                # Gmail validation log forward system
                 if call.message.photo:
                     f_id = call.message.photo[-1].file_id
                     channel_caption = f"📨 **NEW GMAIL TASK COMPLETED** 📨\n\n👤 **User:** ID `***{str(target_user)[-4:]}`\n🗂️ **Mode Type:** {task_type}\n💰 **Earned Reward:** ₹{reward}\n🚀 **Status:** Verified & Live ✅"
@@ -548,5 +607,5 @@ def process_screenshot_proof(message, task_type, task_id_list):
     bot.send_message(message.chat.id, "⏳ **Aapka proof admin panel me chala gaya hai. Verification ka wait karein.**")
 
 # --- START BOT ---
-print("🚀 Bot is live with fresh channels integrated...")
+print("🚀 Bot is live with fresh channels and custom layouts integrated...")
 bot.infinity_polling()
