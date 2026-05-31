@@ -12,7 +12,7 @@ ADMIN_ID = 8031127296
 GMAIL_CHANNEL_ID = -1003955255909
 WITHDRAW_CHANNEL_ID = -1004208044139
 
-# Mandatory Verification Channels 
+# Mandatory Verification Channels
 REQUIRED_CHANNELS = ["@Raka_Works", "@RakaXproof", "@BilibiliWorks"] 
 
 bot = telebot.TeleBot(API_TOKEN)
@@ -66,7 +66,6 @@ def init_db():
         )
     ''')
     
-    # Default Tutorial Value Setup
     cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('tutorial', '📹 **Help & Tutorial Video:**\\n\\n[No video link set yet by admin]')")
     
     conn.commit()
@@ -148,7 +147,7 @@ def check_and_release_expired_tasks():
     except Exception as e:
         print(f"Error in expiry checker: {e}")
 
-# --- DYNAMIC KEYBOARDS ---
+# --- KEYBOARDS (CONTACT OWNER AT MAIN OPTION WINDOW) ---
 def main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     btn1 = types.KeyboardButton("📨 Get Gmail Task")
@@ -156,7 +155,7 @@ def main_menu():
     btn3 = types.KeyboardButton("👥 Invite & Earn")
     btn4 = types.KeyboardButton("💸 Withdraw")
     btn5 = types.KeyboardButton("📚 Help & Tutorial")
-    btn6 = types.KeyboardButton("☎️ Contact Owner")
+    btn6 = types.KeyboardButton("☎️ Contact Owner") # Main options area me layout placement
     markup.add(btn1)
     markup.add(btn2, btn3)
     markup.add(btn4, btn5)
@@ -167,8 +166,7 @@ def task_options_menu():
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
         types.InlineKeyboardButton("📨 1 Gmail Task (₹15)", callback_data="task_single"),
-        types.InlineKeyboardButton("📦 0/10 Gmail Task Bulk", callback_data="task_batch"),
-        types.InlineKeyboardButton("☎️ Contact Owner Direct", url="https://t.me/Raka01")
+        types.InlineKeyboardButton("📦 0/10 Gmail Task Bulk", callback_data="task_batch")
     )
     return markup
 
@@ -345,7 +343,7 @@ def admin_set_help_tutorial(message):
     try:
         new_content = message.text.replace("/sethelp", "").strip()
         if not new_content:
-            bot.send_message(ADMIN_ID, "❌ **Format:** `/sethelp Put any text or custom video video deployment instructions link here`")
+            bot.send_message(ADMIN_ID, "❌ **Format:** `/sethelp Text or custom link`")
             return
         conn = get_db_connection()
         conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('tutorial', ?)", (new_content,))
@@ -355,27 +353,35 @@ def admin_set_help_tutorial(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Set Help Error:** {e}")
 
+# --- FIXED HIGH PERFORMANCE BROADCAST CONTROLLER ---
 @bot.message_handler(commands=['broadcast'])
 def admin_broadcast_flexible(message):
     if message.from_user.id != ADMIN_ID: return
     text_to_send = message.text.replace("/broadcast", "").strip()
     if not text_to_send:
-        bot.send_message(ADMIN_ID, "❌ **Format:** `/broadcast Write any global alert or links here`")
+        bot.send_message(ADMIN_ID, "❌ **Format:** `/broadcast Write any global message here`")
         return
     try:
         conn = get_db_connection()
         users = conn.execute("SELECT user_id FROM users").fetchall()
         conn.close()
+        
         count = 0
+        failed_count = 0
+        
+        # Loop processing base deployment safely
         for u in users:
             try:
                 bot.send_message(u['user_id'], text_to_send)
                 count += 1
-                time.sleep(0.05)
-            except: pass
-        bot.send_message(ADMIN_ID, f"📢 **Broadcast delivered successfully to {count} users.**")
+                time.sleep(0.04) # Anti-flood protection delay parameter
+            except Exception:
+                failed_count += 1
+                continue
+                
+        bot.send_message(ADMIN_ID, f"📢 **Broadcast Complete!**\n\n✅ **Delivered to:** {count} users\n❌ **Failed/Blocked:** {failed_count} users")
     except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ **Broadcast Error:** {e}")
+        bot.send_message(ADMIN_ID, f"❌ **Broadcast Engine Failure:** {e}")
 
 @bot.message_handler(commands=['checkuser'])
 def admin_check_user(message):
@@ -433,10 +439,10 @@ def handle_text_messages(message):
         content = res['value'] if res else "📹 **No Tutorial Set by Admin yet.**"
         bot.send_message(message.chat.id, content, parse_mode="Markdown")
     elif message.text == "☎️ Contact Owner":
-        # EXTRA FEATURE: Contact owner direct handling string
+        # UPDATED USERNAME TO @Raka_01 AT PRIMARY DIRECTORY WINDOW
         markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton("📨 Direct Chat on @Raka01", url="https://t.me/Raka01"))
-        bot.send_message(message.chat.id, "☎️ **Aap niche diye gaye button par click karke direct owner se contact kar sakte hain:**", reply_markup=markup, parse_mode="Markdown")
+        markup.add(types.InlineKeyboardButton("📨 Direct Chat with Owner", url="https://t.me/Raka_01"))
+        bot.send_message(message.chat.id, "☎️ **Aap niche diye gaye button par click karke direct owner (@Raka_01) se contact kar sakte hain:**", reply_markup=markup, parse_mode="Markdown")
 
 def ask_upi_id(message):
     try:
@@ -535,7 +541,6 @@ def handle_callbacks(call):
                 for t_id in ids:
                     conn.execute("UPDATE task_pool SET status = 'COMPLETED' WHERE id = ?", (int(t_id),))
             
-            # FIXED DETECT PRICING RULES (1-7 = ₹15, 10 = ₹20 per item)
             rate = 20.0 if count_override >= 10 else 15.0
             final_reward = rate * count_override
             
@@ -596,7 +601,6 @@ def handle_callbacks(call):
         conn.commit()
         conn.close()
         
-        # STRAIGHT LINE FORMAT AS DEMANDED
         bulk_text = "📦 **0/10 GMAIL BULK TASK LIST** 📦\n\nNiche diye gaye saare gmails line se setup karein:\n\n"
         for index, t in enumerate(tasks, 1):
             bulk_text += f"{index}️⃣. 📧 `{t['gmail']}` | 🔑 `{t['password']}`\n"
@@ -655,5 +659,5 @@ def process_final_channel_proof(message, session_id):
     bot.send_message(message.chat.id, "⏳ **Aapka screenshot proof channels validation panel me bhej diya gaya hai! Next task turant shuru kar sakte hain.** 🎉")
 
 # --- START BOT ENGINE ---
-print("🚀 Core system routing bugs resolved. Ready to run...")
+print("🚀 All admin controllers and routing channels are fully live...")
 bot.infinity_polling()
