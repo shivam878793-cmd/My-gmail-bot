@@ -4,20 +4,20 @@ import time
 import random
 from telebot import types
 
-# --- CONFIGURATION ---
+# --- CONFIGURATION AREA ---
 API_TOKEN = '7990556564:AAFYUQrYcQ7UmwbmFdjPShBFk_kLVYepRpA'
 ADMIN_ID = 8031127296
 
-# Channel Chat IDs
+# Channel Chat IDs Configuration Mapping
 GMAIL_CHANNEL_ID = -1003955255909
 WITHDRAW_CHANNEL_ID = -1004208044139
 
-# Mandatory Verification Channels
+# Mandatory Verification Channels List
 REQUIRED_CHANNELS = ["@Raka_Works", "@RakaXproof", "@BilibiliWorks"] 
 
 bot = telebot.TeleBot(API_TOKEN)
 
-# --- DATABASE SETUP ---
+# --- DATABASE SETUP SYSTEM ---
 def get_db_connection():
     conn = sqlite3.connect('gmail_bot.db', timeout=30.0)
     conn.row_factory = sqlite3.Row
@@ -76,7 +76,7 @@ try:
 except Exception as e:
     print(f"Database Initialization Error: {e}")
 
-# --- STRICT CHANNEL CHECKER ---
+# --- CHANNEL MEMBERSHIP MIDDLEWARE ENGINE ---
 def is_user_joined_all(user_id):
     if user_id == ADMIN_ID:
         return True
@@ -95,11 +95,11 @@ def force_join_keyboard():
         types.InlineKeyboardButton("📢 Join @Raka_Works", url=f"https://t.me/{REQUIRED_CHANNELS[0].replace('@','')}"),
         types.InlineKeyboardButton("📢 Join @RakaXproof", url=f"https://t.me/{REQUIRED_CHANNELS[1].replace('@','')}"),
         types.InlineKeyboardButton("📢 Join @BilibiliWorks", url=f"https://t.me/{REQUIRED_CHANNELS[2].replace('@','')}"),
-        types.InlineKeyboardButton("✅ Joined (Verify)", callback_data="verify_channels")
+        types.InlineKeyboardButton("✅ Joined (Verify Account)", callback_data="verify_channels")
     )
     return markup
 
-# --- CORE UTILITIES ---
+# --- COMPREHENSIVE HELPER UTILITIES ---
 def register_user(user_id, referrer_id=None):
     try:
         conn = get_db_connection()
@@ -147,15 +147,15 @@ def check_and_release_expired_tasks():
     except Exception as e:
         print(f"Error in expiry checker: {e}")
 
-# --- KEYBOARDS (CONTACT OWNER AT MAIN OPTION WINDOW) ---
+# --- SYSTEM DASHBOARD KEYBOARDS (FIXED MID-MENU PLACEMENT) ---
 def main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     btn1 = types.KeyboardButton("📨 Get Gmail Task")
     btn2 = types.KeyboardButton("💰 Wallet")
     btn3 = types.KeyboardButton("👥 Invite & Earn")
     btn4 = types.KeyboardButton("💸 Withdraw")
-    btn5 = types.KeyboardButton("📚 Help & Tutorial")
-    btn6 = types.KeyboardButton("☎️ Contact Owner") # Main options area me layout placement
+    btn5 = types.KeyboardButton("☎️ Contact Owner") # Placed explicitly between Withdraw and Help & Tutorial
+    btn6 = types.KeyboardButton("📚 Help & Tutorial")
     markup.add(btn1)
     markup.add(btn2, btn3)
     markup.add(btn4, btn5)
@@ -178,7 +178,7 @@ def bulk_line_action_buttons(session_id):
     )
     return markup
 
-# --- COMMAND ROUTING HANDLERS ---
+# --- GATEWAY BOT ROUTING ACCESSORS ---
 @bot.message_handler(commands=['start'])
 def start_cmd(message):
     user_id = message.from_user.id
@@ -205,7 +205,7 @@ def start_cmd(message):
         reply_markup=main_menu()
     )
 
-# --- STRICT ADMIN PANEL CONTROL COMMANDS ---
+# --- MASTER ADMIN SUBSYSTEM ENGINE CONTROLS ---
 
 @bot.message_handler(commands=['addbalance'])
 def admin_add_balance(message):
@@ -219,7 +219,7 @@ def admin_add_balance(message):
         target_uid = int(parts[0])
         amount = float(parts[1])
         conn = get_db_connection()
-        conn.execute("INSERT OR IGNORE INTO users (user_id, balance) VALUES (?, 0.0)")
+        conn.execute("INSERT OR IGNORE INTO users (user_id, balance) VALUES (?, 0.0)", (target_uid,))
         conn.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amount, target_uid))
         conn.commit()
         new_bal = conn.execute("SELECT balance FROM users WHERE user_id = ?", (target_uid,)).fetchone()['balance']
@@ -291,7 +291,7 @@ def admin_view_stock_fixed(message):
         for task in stock_tasks:
             stock_text += f"🆔 `ID: {task['id']}`\n📧 `{task['gmail']}`\n🔑 `{task['password']}`\n───────────────────\n"
         if total_available > 30:
-            stock_text += f"\n*⚠️ Note: Baki ke stock hide hain, pehle inko clear/delete karein.*"
+            stock_text += f"\n*⚠️ Note: Pehle inko clear/delete karein baki dekhne ke liye.*"
         bot.send_message(ADMIN_ID, stock_text, parse_mode="Markdown")
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **View Stock Error:** {e}")
@@ -343,7 +343,7 @@ def admin_set_help_tutorial(message):
     try:
         new_content = message.text.replace("/sethelp", "").strip()
         if not new_content:
-            bot.send_message(ADMIN_ID, "❌ **Format:** `/sethelp Text or custom link`")
+            bot.send_message(ADMIN_ID, "❌ **Format:** `/sethelp Text or video link strings`")
             return
         conn = get_db_connection()
         conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('tutorial', ?)", (new_content,))
@@ -353,7 +353,7 @@ def admin_set_help_tutorial(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Set Help Error:** {e}")
 
-# --- FIXED HIGH PERFORMANCE BROADCAST CONTROLLER ---
+# --- FIXED HIGH PERFORMANCE ANTI-FLOOD BROADCAST CORE ---
 @bot.message_handler(commands=['broadcast'])
 def admin_broadcast_flexible(message):
     if message.from_user.id != ADMIN_ID: return
@@ -369,17 +369,32 @@ def admin_broadcast_flexible(message):
         count = 0
         failed_count = 0
         
-        # Loop processing base deployment safely
+        status_msg = bot.send_message(ADMIN_ID, f"📢 **Broadcast Shuru Ho Gaya Hai...**\nTotal Users in DB: {len(users)}")
+        
         for u in users:
             try:
-                bot.send_message(u['user_id'], text_to_send)
+                bot.send_message(chat_id=u['user_id'], text=text_to_send, disable_web_page_preview=False)
                 count += 1
-                time.sleep(0.04) # Anti-flood protection delay parameter
+                
+                # RATE LIMIT EXCEPTION SYSTEM CONTROLLERS
+                if count % 20 == 0:
+                    time.sleep(1.0)
+                else:
+                    time.sleep(0.05)
+                    
+            except telebot.apihelper.ApiTelegramException:
+                failed_count += 1
+                continue
             except Exception:
                 failed_count += 1
                 continue
                 
-        bot.send_message(ADMIN_ID, f"📢 **Broadcast Complete!**\n\n✅ **Delivered to:** {count} users\n❌ **Failed/Blocked:** {failed_count} users")
+        bot.edit_message_text(
+            chat_id=ADMIN_ID,
+            message_id=status_msg.message_id,
+            text=f"📢 **Broadcast Complete Successfully!**\n\n✅ **Delivered To:** `{count}` users\n❌ **Failed/Blocked:** `{failed_count}` users",
+            parse_mode="Markdown"
+        )
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Broadcast Engine Failure:** {e}")
 
@@ -397,7 +412,7 @@ def admin_check_user(message):
             bot.send_message(ADMIN_ID, f"🔍 **User Info:**\n👤 ID: `{target_uid}`\n💰 Balance: ₹{user['balance']}\n✅ Completed: {user['completed_single_tasks']}")
     except Exception as e: pass
 
-# --- TEXT MESSAGES LOGIC AND ROUTING ---
+# --- PRIMARY DISPLAY LOGIC MATRIX ---
 @bot.message_handler(func=lambda msg: True)
 def handle_text_messages(message):
     check_and_release_expired_tasks()
@@ -439,7 +454,7 @@ def handle_text_messages(message):
         content = res['value'] if res else "📹 **No Tutorial Set by Admin yet.**"
         bot.send_message(message.chat.id, content, parse_mode="Markdown")
     elif message.text == "☎️ Contact Owner":
-        # UPDATED USERNAME TO @Raka_01 AT PRIMARY DIRECTORY WINDOW
+        # ST STRICT AND SECURE INLINE CHAT REDIRECT FOR USERNAME @Raka_01
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("📨 Direct Chat with Owner", url="https://t.me/Raka_01"))
         bot.send_message(message.chat.id, "☎️ **Aap niche diye gaye button par click karke direct owner (@Raka_01) se contact kar sakte hain:**", reply_markup=markup, parse_mode="Markdown")
@@ -601,6 +616,7 @@ def handle_callbacks(call):
         conn.commit()
         conn.close()
         
+        # STRAIGHT LINE RENDERING MATRIX WITHOUT DISRUPTIONS
         bulk_text = "📦 **0/10 GMAIL BULK TASK LIST** 📦\n\nNiche diye gaye saare gmails line se setup karein:\n\n"
         for index, t in enumerate(tasks, 1):
             bulk_text += f"{index}️⃣. 📧 `{t['gmail']}` | 🔑 `{t['password']}`\n"
@@ -659,5 +675,5 @@ def process_final_channel_proof(message, session_id):
     bot.send_message(message.chat.id, "⏳ **Aapka screenshot proof channels validation panel me bhej diya gaya hai! Next task turant shuru kar sakte hain.** 🎉")
 
 # --- START BOT ENGINE ---
-print("🚀 All admin controllers and routing channels are fully live...")
+print("🚀 Master setup loaded safely. All production controls active...")
 bot.infinity_polling()
