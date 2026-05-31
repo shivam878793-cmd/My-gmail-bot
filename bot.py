@@ -514,7 +514,7 @@ def handle_text_messages(message):
         
     # ⚙️ FIXED INTERACTION SYSTEM FOR SCREENSHOT 19602.jpg CRASH RESOLUTION
     elif message.text == "☎️ Contact Owner & Help":
-        # Fires up immediate responsive inline keyboard layout mapping directly to @Raka_01 profile link
+        # Fires up immediate responsive inline redirection link straight to @Raka_01 profile
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("📨 Click Here to Chat with Owner", url="https://t.me/Raka_01"))
         bot.send_message(
@@ -646,7 +646,7 @@ def handle_callbacks(call):
             
             # Exact layout render loop verified via 19600.jpg
             bot.edit_message_caption(f"🟢 **Approved! Paid ₹{final_reward} ({count_override} Gmails verified at ₹{int(selected_rate)}/ea)**", chat_id, call.message.message_id)
-            bot.send_message(target_user, f"🎉 **Admin ne aapka proof approve kar diya hai! ₹{final_reward} wallet me add ho gaya.** 💰")
+            bot.send_message(target_user, f"🎉 **Aapka proof approve kar diya gaya hai! ₹{final_reward} wallet me add ho gaya.** 💰")
             
         elif action == "rej":
             if session:
@@ -764,5 +764,5 @@ def process_final_channel_proof(message, session_id):
 # 🛰️ SECTION 12: EXECUTION THREAD INITIALIZER
 # ──────────────────────────────────────────────────────────────────────
 
-print("🚀 Master configuration initialized successfully. Listen loops functional...")
+print("🚀 Core framework compiled. Grid matrices are responsive on all directions...")
 bot.infinity_polling()
