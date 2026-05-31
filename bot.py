@@ -166,6 +166,36 @@ def check_and_release_expired_tasks():
     except Exception as e:
         print(f"Error in expiry checker: {e}")
 
+# 🚀 INTERNAL BROADCAST ENGINE FOR LIVE STOCK UPDATE NOTIFICATIONS
+def auto_stock_broadcast_alert(added_count, current_total):
+    """Fetches all users and broadcasts a secure notification when new stock is added."""
+    try:
+        conn = get_db_connection()
+        users = conn.execute("SELECT user_id FROM users").fetchall()
+        conn.close()
+        
+        alert_text = (
+            "🔥 **FRESH GMAIL STOCK ADDED!** 🔥\n\n"
+            f"📨 **Admin ne abhi naye {added_count} Gmail Tasks update kiye hain!**\n"
+            f"📦 **Total Live Stock Available:** `{current_total}` Gmails\n\n"
+            "💰 Jaldi aao, apna task claim karo aur unlimited earning shuru karo yrr! 🚀"
+        )
+        
+        count = 0
+        for u in users:
+            try:
+                bot.send_message(chat_id=u['user_id'], text=alert_text, parse_mode="Markdown")
+                count += 1
+                # Anti-flood delay configuration
+                if count % 20 == 0:
+                    time.sleep(1.0)
+                else:
+                    time.sleep(0.05)
+            except Exception:
+                continue
+    except Exception as e:
+        print(f"Auto Stock Broadcast Error: {e}")
+
 # ──────────────────────────────────────────────────────────────────────
 # 🛰️ SECTION 5: INTERFACE GRAPHICS & LAYOUT KEYBOARDS MAPS
 # ──────────────────────────────────────────────────────────────────────
@@ -277,7 +307,11 @@ def add_task_via_telegram(message):
         conn.commit()
         count = conn.execute("SELECT COUNT(*) as total FROM task_pool WHERE status = 'AVAILABLE'").fetchone()['total']
         conn.close()
-        bot.send_message(ADMIN_ID, f"✅ **Single Task Added Successfully!**\n📦 Current Available Stock: {count} Gmails")
+        
+        bot.send_message(ADMIN_ID, f"✅ **Single Task Added Successfully!**\n📦 Current Available Stock: {count} Gmails\n📢 *All users alert dispatched!*")
+        
+        # FEATURE INTEGRATION: Automatic global notification broadcast trigger
+        auto_stock_broadcast_alert(1, count)
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Error:** {e}")
 
@@ -302,7 +336,12 @@ def bulk_add_tasks(message):
         conn.commit()
         total_stock = conn.execute("SELECT COUNT(*) as total FROM task_pool WHERE status = 'AVAILABLE'").fetchone()['total']
         conn.close()
-        bot.send_message(ADMIN_ID, f"📦 **Bulk Import Status:**\n✅ Added: {success_count}\n🔥 Total Live Stock: {total_stock}")
+        
+        bot.send_message(ADMIN_ID, f"📦 **Bulk Import Status:**\n✅ Added: {success_count}\n🔥 Total Live Stock: {total_stock}\n📢 *All users alert dispatched!*")
+        
+        # FEATURE INTEGRATION: Automatic bulk global notification broadcast trigger
+        if success_count > 0:
+            auto_stock_broadcast_alert(success_count, total_stock)
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Bulk Add Error:** {e}")
 
@@ -369,7 +408,6 @@ def admin_edit_task(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Edit Task Error:** {e}")
 
-# ⚙️ FINAL CONTEXT SYNC CORE: UPDATES AND STABILIZES THE SYSTEM OVERRIDE PREFERENCES
 @bot.message_handler(commands=['sethelp'])
 def admin_set_help_tutorial(message):
     if message.from_user.id != ADMIN_ID: return
@@ -507,7 +545,6 @@ def handle_text_messages(message):
         else:
             bot.send_message(message.chat.id, f"❌ **WITHDRAWAL DENIED!**\n\n⚠️ Bot me minimum withdrawal limit **₹15** hai.\n💰 Aapka available balance sirf **₹{user['balance']}** hai. Aur tasks complete karein!")
             
-    # ⚙️ CRITICAL PATCH RESOLVED: TEXT ROUTER ALIGNED WITH THE MASTER LAYOUT SYSTEM INSTEAD OF BLANK DROPS
     elif message.text == "📚 Help & Tutorial":
         conn = get_db_connection()
         res = conn.execute("SELECT value FROM settings WHERE key = 'tutorial'").fetchone()
@@ -516,6 +553,7 @@ def handle_text_messages(message):
         bot.send_message(message.chat.id, content, parse_mode="Markdown")
         
     elif message.text == "☎️ Contact Owner & Help":
+        # Fires up immediate responsive inline keyboard layout mapping directly to @Raka_01 profile link
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("📨 Click Here to Chat with Owner", url="https://t.me/Raka_01"))
         bot.send_message(
@@ -569,7 +607,7 @@ def process_withdrawal_admin_review(message, amount):
     bot.send_message(WITHDRAW_CHANNEL_ID, f"🚨 **NEW WITHDRAWAL PENDING** 🚨\n\n👤 **User ID:** `{user_id}`\n💵 **Amount Deducted:** ₹{amount}\n📱 **UPI ID:** `{upi_id}`\n\nSelect action from panel:", parse_mode="Markdown", reply_markup=wd_markup)
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 10: ASYNCHRONOUS CALLBACK CALLBACK CONTROLLERS
+# 🛰️ SECTION 10: ASYNCHRONOUS CALLBACK CONTROLLERS
 # ──────────────────────────────────────────────────────────────────────
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -617,7 +655,6 @@ def handle_callbacks(call):
         conn.close()
         return
 
-    # 🟢 19600.jpg HIGH PROTECTION FLOW MATRIX SYSTEM JOCKEY
     if call.data.startswith('adm_'):
         if user_id != ADMIN_ID: return
         parts = call.data.split('_')
@@ -768,5 +805,5 @@ def process_final_channel_proof(message, session_id):
 # 🛰️ SECTION 12: EXECUTION THREAD INITIALIZER
 # ──────────────────────────────────────────────────────────────────────
 
-print("🚀 Core framework active. Mismatch patches deployed completely...")
+print("🚀 Full master framework deployed with automated database broadcast loops synchronized...")
 bot.infinity_polling()
