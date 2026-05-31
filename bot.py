@@ -32,7 +32,7 @@ def init_db():
     
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS task_pool (
-            id INTEGER PRIMARY KEY AUTO_INCREMENT,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             gmail TEXT,
             password TEXT,
             assigned_to INTEGER DEFAULT NULL,
@@ -74,7 +74,7 @@ def register_user(user_id, referrer_id=None):
         if referrer_id:
             cursor.execute("UPDATE users SET balance = balance + 1.0 WHERE user_id = ?", (referrer_id,))
             try:
-                bot.send_message(referrer_id, "🎉 Alret! Aapke link se koi join hua hai. You got ₹1!")
+                bot.send_message(referrer_id, "🎉 Alert! Aapke link se koi join hua hai. You got ₹1!")
             except:
                 pass
         conn.commit()
