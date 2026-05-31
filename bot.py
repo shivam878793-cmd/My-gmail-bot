@@ -2,6 +2,7 @@ import telebot
 import sqlite3
 import time
 import random
+import threading  # Background execution loops handle karne ke liye
 from telebot import types
 
 # ──────────────────────────────────────────────────────────────────────
@@ -166,16 +167,14 @@ def check_and_release_expired_tasks():
     except Exception as e:
         print(f"Error in expiry checker: {e}")
 
-# 🚀 HIGH PERFORMANCE NON-BLOCKING AUTO STOCK BROADCAST ENGINE (100% BUG FREE)
-def auto_stock_broadcast_alert(added_count, current_total):
-    """Fetches all users into memory first, closes DB immediately, and dispatches stable notifications."""
+# 🚀 ASYNC MULTI-THREADED STOCK ALERT DISPATCHER (ZERO DATABASE LOCK GUARANTEE)
+def broadcast_stock_worker(added_count, current_total):
+    """Internal thread worker to dispatch messages safely in background context loops."""
     try:
-        # DB connection ko pehle hi fetch karke close kar denge taaki lock na ho
         conn = get_db_connection()
         user_rows = conn.execute("SELECT user_id FROM users").fetchall()
         conn.close()
         
-        # Memory list banayenge fast routing ke liye
         user_list = [row['user_id'] for row in user_rows]
         
         alert_text = (
@@ -186,23 +185,23 @@ def auto_stock_broadcast_alert(added_count, current_total):
         )
         
         count = 0
-        # Pura loop memory list par chalega bina database ko block kiye
         for uid in user_list:
             try:
                 bot.send_message(chat_id=uid, text=alert_text, parse_mode="Markdown")
                 count += 1
-                
-                # Strict Rate Limit Flood Control parameters
                 if count % 20 == 0:
                     time.sleep(1.0)
                 else:
                     time.sleep(0.04)
-            except telebot.apihelper.ApiTelegramException:
-                continue
             except Exception:
                 continue
     except Exception as e:
-        print(f"Auto Stock Broadcast Sync Crash Handler: {e}")
+        print(f"Background worker failure sync log: {e}")
+
+def auto_stock_broadcast_alert(added_count, current_total):
+    """Spawns an isolated asynchronous thread layout to bypass SQLite main thread blocking issues completely."""
+    thr = threading.Thread(target=broadcast_stock_worker, args=(added_count, current_total))
+    thr.start()
 
 # ──────────────────────────────────────────────────────────────────────
 # 🛰️ SECTION 5: INTERFACE GRAPHICS & LAYOUT KEYBOARDS MAPS
@@ -316,10 +315,9 @@ def add_task_via_telegram(message):
         count = conn.execute("SELECT COUNT(*) as total FROM task_pool WHERE status = 'AVAILABLE'").fetchone()['total']
         conn.close()
         
-        # Admin panel response immediate trigger
-        bot.send_message(ADMIN_ID, f"✅ **Single Task Added Successfully!**\n📦 Current Available Stock: {count} Gmails\n📢 *All users broadcast alert launched smoothly!*")
+        bot.send_message(ADMIN_ID, f"✅ **Single Task Added Successfully!**\n📦 Current Available Stock: {count} Gmails\n📢 *All users background threads launched!*")
         
-        # Non-blocking automatic global notification alert
+        # Safe async non-blocking stock alert execution
         auto_stock_broadcast_alert(1, count)
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Error:** {e}")
@@ -346,10 +344,8 @@ def bulk_add_tasks(message):
         total_stock = conn.execute("SELECT COUNT(*) as total FROM task_pool WHERE status = 'AVAILABLE'").fetchone()['total']
         conn.close()
         
-        # Admin panel response immediate trigger
-        bot.send_message(ADMIN_ID, f"📦 **Bulk Import Status:**\n✅ Added: {success_count}\n🔥 Total Live Stock: {total_stock}\n📢 *All users broadcast alert launched smoothly!*")
+        bot.send_message(ADMIN_ID, f"📦 **Bulk Import Status:**\n✅ Added: {success_count}\n🔥 Total Live Stock: {total_stock}\n📢 *All users background threads launched!*")
         
-        # Non-blocking automatic bulk notification alert
         if success_count > 0:
             auto_stock_broadcast_alert(success_count, total_stock)
     except Exception as e:
@@ -434,7 +430,7 @@ def admin_set_help_tutorial(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Set Help Error:** {e}")
 
-# --- FIXED HIGH PERFORMANCE MANUAL BROADCAST ENGINE ---
+# --- FIXED HIGH PERFORMANCE ANTI-FLOOD BROADCAST CORE ---
 @bot.message_handler(commands=['broadcast'])
 def admin_broadcast_flexible(message):
     if message.from_user.id != ADMIN_ID: return
@@ -555,7 +551,6 @@ def handle_text_messages(message):
         else:
             bot.send_message(message.chat.id, f"❌ **WITHDRAWAL DENIED!**\n\n⚠️ Bot me minimum withdrawal limit **₹15** hai.\n💰 Aapka available balance sirf **₹{user['balance']}** hai. Aur tasks complete karein!")
             
-    # ⚙️ 19636.jpg FIXED STATE CONTEXT: Standardized execution block for the Tutorial layout routing
     elif message.text == "📚 Help & Tutorial":
         conn = get_db_connection()
         res = conn.execute("SELECT value FROM settings WHERE key = 'tutorial'").fetchone()
@@ -614,7 +609,7 @@ def process_withdrawal_admin_review(message, amount):
     success_text = f"✅ **\"Withdrawal Request Submitted!\"**\n\n💰 **\"Amount:\"** ₹{amount}\n📱 **\"UPI ID:\"** {upi_id}\n\n⚠️ **\"Payment Under 24 Hours\"**"
     bot.send_message(message.chat.id, success_text, parse_mode="Markdown")
     
-    bot.send_message(WITHDRAW_CHANNEL_ID, f"🚨 **NEW WITHDRAWAL PENDING** 🚨\n\n👤 **User ID:** `{user_id}`\n💵 **Amount Deducted:** ₹{amount}\n📱 **UPI ID:** `{upi_id}`\n\nSelect action from panel:", parse_mode="Markdown", reply_markup=wd_markup)
+    bot.send_message(WITHDRAW_CHANNEL_ID, f"🚨 **NEW WITHDRAWAL PENDING** 🚨\n\n👤 **User ID:** `{user_id}`\n💵 **Amount Deducated:** ₹{amount}\n📱 **UPI ID:** `{upi_id}`\n\nSelect action from panel:", parse_mode="Markdown", reply_markup=wd_markup)
 
 # ──────────────────────────────────────────────────────────────────────
 # 🛰️ SECTION 10: ASYNCHRONOUS CALLBACK CONTROLLERS
@@ -815,5 +810,5 @@ def process_final_channel_proof(message, session_id):
 # 🛰️ SECTION 12: EXECUTION THREAD INITIALIZER
 # ──────────────────────────────────────────────────────────────────────
 
-print("🚀 Anti-block multi-broadcast engine deployed successfully. Standing by live...")
+print("🚀 Anti-block multi-threaded configuration complete. Bot is active...")
 bot.infinity_polling()
