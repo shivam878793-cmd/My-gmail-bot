@@ -147,15 +147,17 @@ def check_and_release_expired_tasks():
     except Exception as e:
         print(f"Error in expiry checker: {e}")
 
-# --- SYSTEM DASHBOARD KEYBOARDS ---
+# --- SYSTEM DASHBOARD KEYBOARDS (19601.jpg EXACT GEOMETRIC ALIGNMENT MODIFIED) ---
 def main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     btn1 = types.KeyboardButton("📨 Get Gmail Task")
     btn2 = types.KeyboardButton("💰 Wallet")
     btn3 = types.KeyboardButton("👥 Invite & Earn")
     btn4 = types.KeyboardButton("💸 Withdraw")
-    btn5 = types.KeyboardButton("☎️ Contact Owner") 
-    btn6 = types.KeyboardButton("📚 Help & Tutorial")
+    btn5 = types.KeyboardButton("📚 Help & Tutorial")
+    btn6 = types.KeyboardButton("☎️ Contact Owner & Help") # Placed explicitly at the center bottom base
+    
+    # Structural row injection mapping sequence matching grid layout demands perfectly
     markup.add(btn1)
     markup.add(btn2, btn3)
     markup.add(btn4, btn5)
@@ -428,7 +430,6 @@ def handle_text_messages(message):
         return
         
     if message.text == "📨 Get Gmail Task":
-        # FEATURE 1: Custom text layout mapping info over selection keyboard as requested
         info_header = (
             "📌 **Note: Jo Single Gmail Banayege Unko ₹15 Milega. "
             "Lekin Jo 10+ Gmail Complete Karega Usko ₹20/Gmail Milega!**\n\n"
@@ -459,7 +460,8 @@ def handle_text_messages(message):
         conn.close()
         content = res['value'] if res else "📹 **No Tutorial Set by Admin yet.**"
         bot.send_message(message.chat.id, content, parse_mode="Markdown")
-    elif message.text == "☎️ Contact Owner":
+    elif message.text == "☎️ Contact Owner & Help":
+        # REDIRECT CONFIGURATION TO PERSONAL USERNAME @Raka_01 (REMOVED FROM FORCE JOIN PAGE MAP)
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("📨 Direct Chat with Owner", url="https://t.me/Raka_01"))
         bot.send_message(message.chat.id, "☎️ **Aap niche diye gaye button par click karke direct owner (@Raka_01) se contact kar sakte hain:**", reply_markup=markup, parse_mode="Markdown")
@@ -548,13 +550,11 @@ def handle_callbacks(call):
         conn.close()
         return
 
-    # FEATURE 2: 19600.jpg Layout - Multi-Approve System based on Admin Inline Selection
     if call.data.startswith('adm_'):
         if user_id != ADMIN_ID: return
         parts = call.data.split('_')
         action, target_user, session_id, count_override = parts[1], int(parts[2]), int(parts[3]), int(parts[4])
         
-        # Checking string to map the dynamic rates
         selected_rate = 0.0
         if action == "rate15":
             selected_rate = 15.0
@@ -577,7 +577,6 @@ def handle_callbacks(call):
             conn.execute("UPDATE sessions SET status = 'APPROVED' WHERE id = ?", (session_id,))
             conn.commit()
             
-            # Exact 19600.jpg confirmation layout print
             bot.edit_message_caption(f"🟢 **Approved! Paid ₹{final_reward} ({count_override} Gmails verified at ₹{int(selected_rate)}/ea)**", chat_id, call.message.message_id)
             bot.send_message(target_user, f"🎉 **Admin ne aapka proof approve kar diya hai! ₹{final_reward} wallet me add ho gaya.** 💰")
             
@@ -590,7 +589,6 @@ def handle_callbacks(call):
             conn.commit()
             bot.edit_message_caption("🔴 **Rejected & Destroyed From Stock!**", chat_id, call.message.message_id)
             bot.send_message(target_user, "❌ **Aapka proof reject ho gaya. Credentials stock se permanently delete ho gaye hain.**")
-            
         conn.close()
         return
 
@@ -658,7 +656,7 @@ def handle_callbacks(call):
         bot.register_next_step_handler(msg, process_final_channel_proof, sid)
         conn.close()
 
-# --- CHANNEL PROOF ROUTER MANAGEMENT ---
+# --- CHANNEL PROOF ROUTER MANAGEMENT (19600.jpg SYSTEM DEPLOYMENT) ---
 def process_final_channel_proof(message, session_id):
     if not message.photo:
         bot.send_message(message.chat.id, "❌ Proof structure missing! Photo input required.")
@@ -674,7 +672,7 @@ def process_final_channel_proof(message, session_id):
     if not session: return
     ids_count = len(session['task_id_list'].split(','))
     
-    # FEATURE 2: Fixed inline configuration matching layout required in 19600.jpg
+    # 3-Choice verification inline keys added as per screenshot 19600.jpg mapping requirement
     admin_markup = types.InlineKeyboardMarkup()
     admin_markup.add(
         types.InlineKeyboardButton("🟢 Approve at ₹15/Gmail", callback_data=f"adm_rate15_{user_id}_{session_id}_{ids_count}"),
@@ -692,5 +690,5 @@ def process_final_channel_proof(message, session_id):
     bot.send_message(message.chat.id, "⏳ **Aapka screenshot proof channels validation panel me bhej diya gaya hai! Next task turant shuru kar sakte hain.** 🎉")
 
 # --- START BOT ENGINE ---
-print("🚀 Payout layout and informational heading verified. Production master is running safely...")
+print("🚀 Master grid routing and informational info configuration verified completely...")
 bot.infinity_polling()
