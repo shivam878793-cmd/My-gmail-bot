@@ -12,7 +12,7 @@ ADMIN_ID = 8031127296
 GMAIL_CHANNEL_ID = -1003955255909
 WITHDRAW_CHANNEL_ID = -1004208044139
 
-# 📢 REQ CHANNELS (Aapke teeno channels yahan set hain)
+# Mandatory Verification Channels 
 REQUIRED_CHANNELS = ["@Raka_Works", "@RakaXproof", "@BilibiliWorks"] 
 
 bot = telebot.TeleBot(API_TOKEN)
@@ -59,6 +59,16 @@ def init_db():
         )
     ''')
     
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )
+    ''')
+    
+    # Default Tutorial Value Setup
+    cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('tutorial', '📹 **Help & Tutorial Video:**\\n\\n[No video link set yet by admin]')")
+    
     conn.commit()
     conn.close()
 
@@ -67,21 +77,16 @@ try:
 except Exception as e:
     print(f"Database Initialization Error: {e}")
 
-# --- FIXED CHANNEL CHECKER LOGIC ---
+# --- STRICT CHANNEL CHECKER ---
 def is_user_joined_all(user_id):
-    # Agar direct admin check kar rha hai toh ignore karein taaki testing me dikkat na ho
     if user_id == ADMIN_ID:
         return True
-        
     for channel in REQUIRED_CHANNELS:
         try:
             member = bot.get_chat_member(channel, user_id)
-            # Strict validation checking status
             if member.status in ['left', 'kicked', 'bad_request']:
                 return False
-        except Exception as e:
-            # Agar bot admin nahi hai ya koi error hai toh safe side ke liye False return karega
-            print(f"Error checking channel {channel}: {e}")
+        except Exception:
             return False 
     return True
 
@@ -91,11 +96,11 @@ def force_join_keyboard():
         types.InlineKeyboardButton("📢 Join @Raka_Works", url=f"https://t.me/{REQUIRED_CHANNELS[0].replace('@','')}"),
         types.InlineKeyboardButton("📢 Join @RakaXproof", url=f"https://t.me/{REQUIRED_CHANNELS[1].replace('@','')}"),
         types.InlineKeyboardButton("📢 Join @BilibiliWorks", url=f"https://t.me/{REQUIRED_CHANNELS[2].replace('@','')}"),
-        types.InlineKeyboardButton("✅ Joined (Click Here)", callback_data="verify_channels")
+        types.InlineKeyboardButton("✅ Joined (Verify)", callback_data="verify_channels")
     )
     return markup
 
-# --- HELPER FUNCTIONS ---
+# --- CORE UTILITIES ---
 def register_user(user_id, referrer_id=None):
     try:
         conn = get_db_connection()
@@ -143,7 +148,7 @@ def check_and_release_expired_tasks():
     except Exception as e:
         print(f"Error in expiry checker: {e}")
 
-# --- KEYBOARDS ---
+# --- DYNAMIC KEYBOARDS ---
 def main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     btn1 = types.KeyboardButton("📨 Get Gmail Task")
@@ -151,16 +156,19 @@ def main_menu():
     btn3 = types.KeyboardButton("👥 Invite & Earn")
     btn4 = types.KeyboardButton("💸 Withdraw")
     btn5 = types.KeyboardButton("📚 Help & Tutorial")
+    btn6 = types.KeyboardButton("☎️ Contact Owner")
     markup.add(btn1)
     markup.add(btn2, btn3)
     markup.add(btn4, btn5)
+    markup.add(btn6)
     return markup
 
 def task_options_menu():
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
         types.InlineKeyboardButton("📨 1 Gmail Task (₹15)", callback_data="task_single"),
-        types.InlineKeyboardButton("📦 0/10 Gmail Task Bulk", callback_data="task_batch")
+        types.InlineKeyboardButton("📦 0/10 Gmail Task Bulk", callback_data="task_batch"),
+        types.InlineKeyboardButton("☎️ Contact Owner Direct", url="https://t.me/Raka01")
     )
     return markup
 
@@ -172,7 +180,7 @@ def bulk_line_action_buttons(session_id):
     )
     return markup
 
-# --- COMMAND HANDLERS ---
+# --- COMMAND ROUTING HANDLERS ---
 @bot.message_handler(commands=['start'])
 def start_cmd(message):
     user_id = message.from_user.id
@@ -185,7 +193,6 @@ def start_cmd(message):
             
     register_user(user_id, referrer_id)
     
-    # Strictly check join validation status first
     if not is_user_joined_all(user_id):
         bot.send_message(
             message.chat.id, 
@@ -200,77 +207,197 @@ def start_cmd(message):
         reply_markup=main_menu()
     )
 
-# --- ADMIN EXCLUSIVE CONTROLS ---
+# --- STRICT ADMIN PANEL CONTROL COMMANDS ---
+
 @bot.message_handler(commands=['addbalance'])
 def admin_add_balance(message):
     if message.from_user.id != ADMIN_ID: return
     try:
         raw_text = message.text.replace("/addbalance", "").strip()
         parts = raw_text.split()
-        if len(parts) < 2: return
+        if len(parts) < 2:
+            bot.send_message(ADMIN_ID, "❌ **Sahi Format:** `/addbalance USER_ID AMOUNT`")
+            return
         target_uid = int(parts[0])
         amount = float(parts[1])
         conn = get_db_connection()
-        conn.execute("INSERT OR IGNORE INTO users (user_id, balance) VALUES (?, 0.0)", (target_uid,))
+        conn.execute("INSERT OR IGNORE INTO users (user_id, balance) VALUES (?, 0.0)")
         conn.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amount, target_uid))
         conn.commit()
+        new_bal = conn.execute("SELECT balance FROM users WHERE user_id = ?", (target_uid,)).fetchone()['balance']
         conn.close()
-        bot.send_message(ADMIN_ID, "✅ Balance Credited Successfully!")
-    except Exception as e: bot.send_message(ADMIN_ID, f"Error: {e}")
+        bot.send_message(ADMIN_ID, f"✅ **Balance Credited Successfully!**\n👤 User: `{target_uid}`\n💰 Balance: ₹{new_bal}")
+        try:
+            bot.send_message(target_uid, f"🎁 **Wallet Update Alert!**\n\nAdmin ne aapke wallet me **Extra ₹{amount}** credit kiye hain!\n💰 **Current Balance:** ₹{new_bal}")
+        except: pass
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ **Error:** {e}")
+
+@bot.message_handler(commands=['addtask'])
+def add_task_via_telegram(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        raw_text = message.text.replace("/addtask", "").strip()
+        if not raw_text or ":" not in raw_text:
+            bot.send_message(ADMIN_ID, "❌ **Format:**\n`/addtask username@gmail.com:password`")
+            return
+        gmail, password = raw_text.split(":", 1)
+        conn = get_db_connection()
+        conn.execute("INSERT INTO task_pool (gmail, password, status) VALUES (?, ?, 'AVAILABLE')", (gmail.strip(), password.strip()))
+        conn.commit()
+        count = conn.execute("SELECT COUNT(*) as total FROM task_pool WHERE status = 'AVAILABLE'").fetchone()['total']
+        conn.close()
+        bot.send_message(ADMIN_ID, f"✅ **Task Added Successfully!**\n📦 Current Available Stock: {count} Gmails")
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ **Error:** {e}")
 
 @bot.message_handler(commands=['bulkadd'])
 def bulk_add_tasks(message):
     if message.from_user.id != ADMIN_ID: return
     try:
         raw_text = message.text.replace("/bulkadd", "").strip()
+        if not raw_text:
+            bot.send_message(ADMIN_ID, "❌ **Format:**\n\n`/bulkadd`\n`email1:pass1`\n`email2:pass2`")
+            return
         lines = raw_text.split("\n")
         success_count = 0
         conn = get_db_connection()
         for line in lines:
             if ":" in line:
-                gmail, password = line.strip().split(":", 1)
-                conn.execute("INSERT INTO task_pool (gmail, password, status) VALUES (?, ?, 'AVAILABLE')", (gmail.strip(), password.strip()))
-                success_count += 1
+                try:
+                    gmail, password = line.strip().split(":", 1)
+                    conn.execute("INSERT INTO task_pool (gmail, password, status) VALUES (?, ?, 'AVAILABLE')", (gmail.strip(), password.strip()))
+                    success_count += 1
+                except: pass
         conn.commit()
         total_stock = conn.execute("SELECT COUNT(*) as total FROM task_pool WHERE status = 'AVAILABLE'").fetchone()['total']
         conn.close()
-        bot.send_message(ADMIN_ID, f"✅ Bulk Added: {success_count} | Live Stock: {total_stock}")
-    except Exception as e: bot.send_message(ADMIN_ID, f"Error: {e}")
+        bot.send_message(ADMIN_ID, f"📦 **Bulk Import Status:**\n✅ Added: {success_count}\n🔥 Total Live Stock: {total_stock}")
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ **Bulk Add Error:** {e}")
 
-@bot.message_handler(commands=['viewstock'])
-def admin_view_stock(message):
+@bot.message_handler(commands=['viewtask'])
+def admin_view_stock_fixed(message):
     if message.from_user.id != ADMIN_ID: return
-    conn = get_db_connection()
-    stock_tasks = conn.execute("SELECT id, gmail FROM task_pool WHERE status = 'AVAILABLE' LIMIT 30").fetchall()
-    conn.close()
-    if not stock_tasks:
-        bot.send_message(ADMIN_ID, "📦 Stock Empty!")
-        return
-    stock_text = "🔥 **LIVE GMAIL STOCK** 🔥\n\n"
-    for task in stock_tasks:
-        stock_text += f"🆔 `ID: {task['id']}` -> `{task['gmail']}`\n"
-    bot.send_message(ADMIN_ID, stock_text, parse_mode="Markdown")
+    try:
+        conn = get_db_connection()
+        stock_tasks = conn.execute("SELECT id, gmail, password FROM task_pool WHERE status = 'AVAILABLE' ORDER BY id ASC LIMIT 30").fetchall()
+        total_available = conn.execute("SELECT COUNT(*) as total FROM task_pool WHERE status = 'AVAILABLE'").fetchone()['total']
+        conn.close()
+        
+        if not stock_tasks:
+            bot.send_message(ADMIN_ID, "📦 **Stock Empty Hai!** Database pool me koi bhi live task nahi mila.")
+            return
+            
+        stock_text = f"🔥 **LIVE AVAILABLE STOCK LIST (Total: {total_available})** 🔥\n\n"
+        for task in stock_tasks:
+            stock_text += f"🆔 `ID: {task['id']}`\n📧 `{task['gmail']}`\n🔑 `{task['password']}`\n───────────────────\n"
+        if total_available > 30:
+            stock_text += f"\n*⚠️ Note: Baki ke stock hide hain, pehle inko clear/delete karein.*"
+        bot.send_message(ADMIN_ID, stock_text, parse_mode="Markdown")
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ **View Stock Error:** {e}")
 
 @bot.message_handler(commands=['deletetask'])
 def admin_delete_task(message):
     if message.from_user.id != ADMIN_ID: return
     try:
-        task_id = int(message.text.replace("/deletetask", "").strip())
+        task_id = message.text.replace("/deletetask", "").strip()
+        if not task_id or not task_id.isdigit():
+            bot.send_message(ADMIN_ID, "❌ **Sahi Format:** `/deletetask TASK_ID`")
+            return
+        task_id = int(task_id)
         conn = get_db_connection()
+        task_check = conn.execute("SELECT * FROM task_pool WHERE id = ? AND status = 'AVAILABLE'", (task_id,)).fetchone()
+        if not task_check:
+            bot.send_message(ADMIN_ID, f"❌ **Task ID `{task_id}` Live Stock me nahi mili.**")
+            conn.close()
+            return
         conn.execute("DELETE FROM task_pool WHERE id = ?", (task_id,))
         conn.commit()
         conn.close()
-        bot.send_message(ADMIN_ID, f"🗑️ Task ID {task_id} manually dropped.")
-    except Exception as e: bot.send_message(ADMIN_ID, f"Error: {e}")
+        bot.send_message(ADMIN_ID, f"🗑️ **Stock Se Deleted!**\n🆔 Task ID: `{task_id}` has been dropped from live pool.")
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ **Delete Task Error:** {e}")
 
-# --- REPLY KEYBOARD INTERACTION SYSTEM ---
+@bot.message_handler(commands=['edittask'])
+def admin_edit_task(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        raw_text = message.text.replace("/edittask", "").strip()
+        parts = raw_text.split(None, 1)
+        if len(parts) < 2 or ":" not in parts[1]:
+            bot.send_message(ADMIN_ID, "❌ **Format:** `/edittask TASK_ID new_email@gmail.com:new_password`")
+            return
+        task_id = int(parts[0])
+        new_gmail, new_password = parts[1].strip().split(":", 1)
+        conn = get_db_connection()
+        conn.execute("UPDATE task_pool SET gmail = ?, password = ? WHERE id = ?", (new_gmail.strip(), new_password.strip(), task_id))
+        conn.commit()
+        conn.close()
+        bot.send_message(ADMIN_ID, f"📝 **Task ID `{task_id}` details updated successfully in database.**")
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ **Edit Task Error:** {e}")
+
+@bot.message_handler(commands=['sethelp'])
+def admin_set_help_tutorial(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        new_content = message.text.replace("/sethelp", "").strip()
+        if not new_content:
+            bot.send_message(ADMIN_ID, "❌ **Format:** `/sethelp Put any text or custom video video deployment instructions link here`")
+            return
+        conn = get_db_connection()
+        conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('tutorial', ?)", (new_content,))
+        conn.commit()
+        conn.close()
+        bot.send_message(ADMIN_ID, "✅ **Help & Tutorial message updated in database!**")
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ **Set Help Error:** {e}")
+
+@bot.message_handler(commands=['broadcast'])
+def admin_broadcast_flexible(message):
+    if message.from_user.id != ADMIN_ID: return
+    text_to_send = message.text.replace("/broadcast", "").strip()
+    if not text_to_send:
+        bot.send_message(ADMIN_ID, "❌ **Format:** `/broadcast Write any global alert or links here`")
+        return
+    try:
+        conn = get_db_connection()
+        users = conn.execute("SELECT user_id FROM users").fetchall()
+        conn.close()
+        count = 0
+        for u in users:
+            try:
+                bot.send_message(u['user_id'], text_to_send)
+                count += 1
+                time.sleep(0.05)
+            except: pass
+        bot.send_message(ADMIN_ID, f"📢 **Broadcast delivered successfully to {count} users.**")
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ **Broadcast Error:** {e}")
+
+@bot.message_handler(commands=['checkuser'])
+def admin_check_user(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        target_uid = message.text.replace("/checkuser", "").strip()
+        if not target_uid or not target_uid.isdigit(): return
+        target_uid = int(target_uid)
+        conn = get_db_connection()
+        user = conn.execute("SELECT * FROM users WHERE user_id = ?", (target_uid,)).fetchone()
+        conn.close()
+        if user:
+            bot.send_message(ADMIN_ID, f"🔍 **User Info:**\n👤 ID: `{target_uid}`\n💰 Balance: ₹{user['balance']}\n✅ Completed: {user['completed_single_tasks']}")
+    except Exception as e: pass
+
+# --- TEXT MESSAGES LOGIC AND ROUTING ---
 @bot.message_handler(func=lambda msg: True)
 def handle_text_messages(message):
     check_and_release_expired_tasks()
     user_id = message.from_user.id
     register_user(user_id)
     
-    # Check current live status middleware layer
     if not is_user_joined_all(user_id):
         bot.send_message(
             message.chat.id, 
@@ -299,6 +426,17 @@ def handle_text_messages(message):
             bot.register_next_step_handler(msg, ask_upi_id)
         else:
             bot.send_message(message.chat.id, f"❌ **Minimum withdrawal amount ₹15 hai.**")
+    elif message.text == "📚 Help & Tutorial":
+        conn = get_db_connection()
+        res = conn.execute("SELECT value FROM settings WHERE key = 'tutorial'").fetchone()
+        conn.close()
+        content = res['value'] if res else "📹 **No Tutorial Set by Admin yet.**"
+        bot.send_message(message.chat.id, content, parse_mode="Markdown")
+    elif message.text == "☎️ Contact Owner":
+        # EXTRA FEATURE: Contact owner direct handling string
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("📨 Direct Chat on @Raka01", url="https://t.me/Raka01"))
+        bot.send_message(message.chat.id, "☎️ **Aap niche diye gaye button par click karke direct owner se contact kar sakte hain:**", reply_markup=markup, parse_mode="Markdown")
 
 def ask_upi_id(message):
     try:
@@ -337,41 +475,35 @@ def process_withdrawal_admin_review(message, amount):
     success_text = f"✅ **\"Withdrawal Request Submitted!\"**\n\n💰 **\"Amount:\"** ₹{amount}\n📱 **\"UPI ID:\"** {upi_id}\n\n⚠️ **\"Payment Under 24 Hours\"**"
     bot.send_message(message.chat.id, success_text, parse_mode="Markdown")
     
-    bot.send_message(WITHDRAW_CHANNEL_ID, f"🚨 **NEW WITHDRAWAL PENDING** 🚨\n👤 User: `{user_id}`\n💵 Amount: ₹{amount}\n📱 UPI: `{upi_id}`", parse_mode="Markdown", reply_markup=wd_markup)
+    bot.send_message(WITHDRAW_CHANNEL_ID, f"🚨 **NEW WITHDRAWAL PENDING** 🚨\n👤 User: `{user_id}`\n💵 Amount Deducted: ₹{amount}\n📱 UPI: `{upi_id}`", parse_mode="Markdown", reply_markup=wd_markup)
 
-# --- CALLBACK ROUTER HANDLERS ---
+# --- CALLBACK ROUTER SYSTEM ---
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callbacks(call):
     check_and_release_expired_tasks()
     user_id = call.from_user.id
     chat_id = call.message.chat.id
     
-    # 3 Channels Membership Validation Click
     if call.data == "verify_channels":
         if is_user_joined_all(user_id):
-            try:
-                bot.delete_message(chat_id, call.message.message_id)
-            except:
-                pass
+            try: bot.delete_message(chat_id, call.message.message_id)
+            except: pass
             bot.send_message(chat_id, "🎉 **Channels verified successfully! All options unlocked.**", reply_markup=main_menu())
             
-            # Send detailed info alert alert straight to admin channel
             u_info = call.from_user
             alert_msg = (
                 f"👤 **NEW USER JOINED CHANNELS** 👤\n\n"
                 f"🆔 **User ID:** `{u_info.id}`\n"
                 f"📛 **First Name:** {u_info.first_name}\n"
-                f"username: @{u_info.username if u_info.username else 'N/A'}\n"
-                f"⚡ **Status:** Active Member"
+                f"Username: @{u_info.username if u_info.username else 'N/A'}"
             )
             bot.send_message(ADMIN_ID, alert_msg, parse_mode="Markdown")
         else:
-            bot.answer_callback_query(call.id, "❌ Aapne saare 3 channels join nahi kiye hain! Kirpya check karein.", show_alert=True)
+            bot.answer_callback_query(call.id, "❌ Aapne saare 3 channels join nahi kiye hain!", show_alert=True)
         return
 
-    # Middleware restriction bypass filter for other operations
     if not is_user_joined_all(user_id) and call.data != "verify_channels":
-        bot.answer_callback_query(call.id, "❌ Access Blocked! Pehle saare channels join karein.", show_alert=True)
+        bot.answer_callback_query(call.id, "❌ Access Blocked! Pehle channels join karein.", show_alert=True)
         return
 
     if call.data.startswith('wd_'):
@@ -386,7 +518,7 @@ def handle_callbacks(call):
             conn.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amount, target_user))
             conn.commit()
             bot.edit_message_text(f"🔴 **Rejected Payout! Balance Refunded.**", chat_id, call.message.message_id)
-            bot.send_message(target_user, f"❌ Aapka withdrawal reject ho gaya. Balance safely refund kar diya gaya.")
+            bot.send_message(target_user, f"❌ Aapka withdrawal reject ho gaya. Balance wapas credit ho gaya.")
         conn.close()
         return
 
@@ -403,7 +535,7 @@ def handle_callbacks(call):
                 for t_id in ids:
                     conn.execute("UPDATE task_pool SET status = 'COMPLETED' WHERE id = ?", (int(t_id),))
             
-            # FIXED AUTO DETECT PRICE RULE (1-7 = ₹15, 10/10 Complete = ₹20)
+            # FIXED DETECT PRICING RULES (1-7 = ₹15, 10 = ₹20 per item)
             rate = 20.0 if count_override >= 10 else 15.0
             final_reward = rate * count_override
             
@@ -421,7 +553,7 @@ def handle_callbacks(call):
             conn.execute("UPDATE sessions SET status = 'REJECTED' WHERE id = ?", (session_id,))
             conn.commit()
             bot.edit_message_caption("🔴 **Rejected & Destroyed From Stock!**", chat_id, call.message.message_id)
-            bot.send_message(target_user, "❌ Aapka submission proof reject ho gaya. Credentials stock se permanently delete ho gaye hain.")
+            bot.send_message(target_user, "❌ Aapka proof reject ho gaya. Base accounts stock se delete ho gaye.")
         conn.close()
         return
 
@@ -464,7 +596,7 @@ def handle_callbacks(call):
         conn.commit()
         conn.close()
         
-        # FIXED: Line se pure 10 gmails print honge pure block dashboard me
+        # STRAIGHT LINE FORMAT AS DEMANDED
         bulk_text = "📦 **0/10 GMAIL BULK TASK LIST** 📦\n\nNiche diye gaye saare gmails line se setup karein:\n\n"
         for index, t in enumerate(tasks, 1):
             bulk_text += f"{index}️⃣. 📧 `{t['gmail']}` | 🔑 `{t['password']}`\n"
@@ -486,14 +618,14 @@ def handle_callbacks(call):
 
     elif call.data.startswith("done_"):
         sid = int(call.data.split('_')[1])
-        msg = bot.send_message(chat_id, "📸 **Aapne jitne bhi gmails banaye hain, unka composite proof screenshot image send karein:**")
+        msg = bot.send_message(chat_id, "📸 **Aapne jitne bhi gmails banaye hain, unka proof screenshot image send karein:**")
         bot.register_next_step_handler(msg, process_final_channel_proof, sid)
         conn.close()
 
 # --- CHANNEL PROOF ROUTER MANAGEMENT ---
 def process_final_channel_proof(message, session_id):
     if not message.photo:
-        bot.send_message(message.chat.id, "❌ Proof structure missing! Photo input required. Naya task le lijiye.")
+        bot.send_message(message.chat.id, "❌ Proof structure missing! Photo input required.")
         return
         
     file_id = message.photo[-1].file_id
@@ -506,7 +638,6 @@ def process_final_channel_proof(message, session_id):
     if not session: return
     ids_count = len(session['task_id_list'].split(','))
     
-    # Secure callback query execution strings mapping layout controls
     admin_markup = types.InlineKeyboardMarkup()
     admin_markup.add(
         types.InlineKeyboardButton("🟢 Approve All 10 (₹20/ea)", callback_data=f"adm_app_{user_id}_{session_id}_10"),
@@ -514,7 +645,6 @@ def process_final_channel_proof(message, session_id):
         types.InlineKeyboardButton("🔴 Reject & Delete", callback_data=f"adm_rej_{user_id}_{session_id}_0")
     )
     
-    # Direct broadcast submission block layout forward to channel logs
     bot.send_photo(
         GMAIL_CHANNEL_ID,
         file_id,
@@ -522,8 +652,8 @@ def process_final_channel_proof(message, session_id):
         reply_markup=admin_markup,
         parse_mode="Markdown"
     )
-    bot.send_message(message.chat.id, "⏳ **Aapka screenshot proof channels validation panel me bhej diya gaya hai! No Limits system active hai, aap turant NEXT task shuru kar sakte hain.** 🎉")
+    bot.send_message(message.chat.id, "⏳ **Aapka screenshot proof channels validation panel me bhej diya gaya hai! Next task turant shuru kar sakte hain.** 🎉")
 
 # --- START BOT ENGINE ---
-print("🚀 Security Channel Verification Core online with multi-channels functionality mapping...")
+print("🚀 Core system routing bugs resolved. Ready to run...")
 bot.infinity_polling()
