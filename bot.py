@@ -4,30 +4,39 @@ import time
 import random
 from telebot import types
 
-# --- CONFIGURATION AREA ---
+# ──────────────────────────────────────────────────────────────────────
+# 🛰️ SECTION 1: MASTER CONFIGURATION & SYSTEM GLOBALS
+# ──────────────────────────────────────────────────────────────────────
+
 API_TOKEN = '7990556564:AAFYUQrYcQ7UmwbmFdjPShBFk_kLVYepRpA'
 ADMIN_ID = 8031127296
 
-# Channel Chat IDs Configuration Mapping
+# Telegram Logging Channel Chat IDs Directional Path Mapping
 GMAIL_CHANNEL_ID = -1003955255909
 WITHDRAW_CHANNEL_ID = -1004208044139
 
-# Mandatory Verification Channels List
+# Mandatory Verification Channels List As Per User Explicit Demand
 REQUIRED_CHANNELS = ["@Raka_Works", "@RakaXproof", "@BilibiliWorks"] 
 
 bot = telebot.TeleBot(API_TOKEN)
 
-# --- DATABASE SETUP SYSTEM ---
+# ──────────────────────────────────────────────────────────────────────
+# 🛰️ SECTION 2: DATABASE INITIALIZATION & ARCHITECTURE (SQLITE3)
+# ──────────────────────────────────────────────────────────────────────
+
 def get_db_connection():
+    """Establishes a stable and secure connection to the local database file."""
     conn = sqlite3.connect('gmail_bot.db', timeout=30.0)
     conn.row_factory = sqlite3.Row
     return conn
 
 def init_db():
+    """Initializes all essential relational schemas required for the application core runtime state tracking."""
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('PRAGMA journal_mode=WAL;')
     
+    # User accounts data storage profile tracker table configuration
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
@@ -37,6 +46,7 @@ def init_db():
         )
     ''')
     
+    # Inventory repository containing gmails available for lease or assignments
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS task_pool (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,6 +58,7 @@ def init_db():
         )
     ''')
     
+    # Active user transactional session queues management schema 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS sessions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,6 +70,7 @@ def init_db():
         )
     ''')
     
+    # Persistent configuration variables and documentation layout entries data space
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
@@ -76,8 +88,12 @@ try:
 except Exception as e:
     print(f"Database Initialization Error: {e}")
 
-# --- CHANNEL MEMBERSHIP MIDDLEWARE ENGINE ---
+# ──────────────────────────────────────────────────────────────────────
+# 🛰️ SECTION 3: SECURITY MIDDLEWARE & ACCOUNT MEMBERSHIP CHECKER
+# ──────────────────────────────────────────────────────────────────────
+
 def is_user_joined_all(user_id):
+    """Intercepts and performs strict validation routines against the external channels infrastructure."""
     if user_id == ADMIN_ID:
         return True
     for channel in REQUIRED_CHANNELS:
@@ -90,6 +106,7 @@ def is_user_joined_all(user_id):
     return True
 
 def force_join_keyboard():
+    """Generates a clean inline menu mapping exact link coordinates to the mandatory channels network."""
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
         types.InlineKeyboardButton("📢 Join @Raka_Works", url=f"https://t.me/{REQUIRED_CHANNELS[0].replace('@','')}"),
@@ -99,8 +116,12 @@ def force_join_keyboard():
     )
     return markup
 
-# --- COMPREHENSIVE HELPER UTILITIES ---
+# ──────────────────────────────────────────────────────────────────────
+# 🛰️ SECTION 4: TRANSACTIONS & SYSTEM HELPER UTILITIES
+# ──────────────────────────────────────────────────────────────────────
+
 def register_user(user_id, referrer_id=None):
+    """Processes user signup entries and hooks referral calculations automatically into the datastore space."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -119,6 +140,7 @@ def register_user(user_id, referrer_id=None):
         print(f"Error in register_user: {e}")
 
 def check_and_release_expired_tasks():
+    """Scans structural tracking records for dead lock objects and releases stale elements safely back into pool."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -147,15 +169,19 @@ def check_and_release_expired_tasks():
     except Exception as e:
         print(f"Error in expiry checker: {e}")
 
-# --- SYSTEM DASHBOARD KEYBOARDS (19602.jpg ACCURATE LAYOUT MATRIX) ---
+# ──────────────────────────────────────────────────────────────────────
+# 🛰️ SECTION 5: INTERFACE GRAPHICS & LAYOUT KEYBOARDS MAPS
+# ──────────────────────────────────────────────────────────────────────
+
 def main_menu():
+    """Generates the absolute standard master grid mapping required fields directly inside the device frame matrix."""
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     btn1 = types.KeyboardButton("📨 Get Gmail Task")
     btn2 = types.KeyboardButton("💰 Wallet")
     btn3 = types.KeyboardButton("👥 Invite & Earn")
     btn4 = types.KeyboardButton("💸 Withdraw")
     btn5 = types.KeyboardButton("📚 Help & Tutorial")
-    btn6 = types.KeyboardButton("☎️ Contact Owner & Help") # 19602.jpg geometric layout placement
+    btn6 = types.KeyboardButton("☎️ Contact Owner & Help") # 19602.jpg Layout Anchor Integration Point
     
     markup.add(btn1)
     markup.add(btn2, btn3)
@@ -164,6 +190,7 @@ def main_menu():
     return markup
 
 def task_options_menu():
+    """Generates the inline task router module containing single and bulk selection layouts."""
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
         types.InlineKeyboardButton("📨 1 Gmail Task (₹15)", callback_data="task_single"),
@@ -172,6 +199,7 @@ def task_options_menu():
     return markup
 
 def bulk_line_action_buttons(session_id):
+    """Assembles programmatic inline control loops for execution tracking verification mappings."""
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
         types.InlineKeyboardButton("✅ Done & Submit Proof", callback_data=f"done_{session_id}"),
@@ -179,9 +207,13 @@ def bulk_line_action_buttons(session_id):
     )
     return markup
 
-# --- GATEWAY BOT ROUTING ACCESSORS ---
+# ──────────────────────────────────────────────────────────────────────
+# 🛰️ SECTION 6: ROUTING LOGIC & GATEWAY GATEKEEPERS
+# ──────────────────────────────────────────────────────────────────────
+
 @bot.message_handler(commands=['start'])
 def start_cmd(message):
+    """Processes entry checkpoints and handles user profile setups."""
     user_id = message.from_user.id
     text = message.text.split()
     referrer_id = None
@@ -206,10 +238,13 @@ def start_cmd(message):
         reply_markup=main_menu()
     )
 
-# --- MASTER ADMIN SUBSYSTEM ENGINE CONTROLS ---
+# ──────────────────────────────────────────────────────────────────────
+# 🛰️ SECTION 7: CORE ADMIN CONTROLS & MANAGEMENT SUBSYSTEMS
+# ──────────────────────────────────────────────────────────────────────
 
 @bot.message_handler(commands=['addbalance'])
 def admin_add_balance(message):
+    """Directly pushes arbitrary cash values into a targeted user account profile statement securely."""
     if message.from_user.id != ADMIN_ID: return
     try:
         raw_text = message.text.replace("/addbalance", "").strip()
@@ -234,6 +269,7 @@ def admin_add_balance(message):
 
 @bot.message_handler(commands=['addtask'])
 def add_task_via_telegram(message):
+    """Inserts an isolated data unit directly into live assignment pool loops."""
     if message.from_user.id != ADMIN_ID: return
     try:
         raw_text = message.text.replace("/addtask", "").strip()
@@ -252,6 +288,7 @@ def add_task_via_telegram(message):
 
 @bot.message_handler(commands=['bulkadd'])
 def bulk_add_tasks(message):
+    """Processes large multiline sheets containing configuration loops without script crashes."""
     if message.from_user.id != ADMIN_ID: return
     try:
         raw_text = message.text.replace("/bulkadd", "").strip()
@@ -277,6 +314,7 @@ def bulk_add_tasks(message):
 
 @bot.message_handler(commands=['viewtask'])
 def admin_view_stock_fixed(message):
+    """Pulls live stock files and maps their identifier integers transparently for the admin profile."""
     if message.from_user.id != ADMIN_ID: return
     try:
         conn = get_db_connection()
@@ -299,6 +337,7 @@ def admin_view_stock_fixed(message):
 
 @bot.message_handler(commands=['deletetask'])
 def admin_delete_task(message):
+    """Drops specific inventory coordinates permanently to clean faulty entries from live database."""
     if message.from_user.id != ADMIN_ID: return
     try:
         task_id = message.text.replace("/deletetask", "").strip()
@@ -321,6 +360,7 @@ def admin_delete_task(message):
 
 @bot.message_handler(commands=['edittask'])
 def admin_edit_task(message):
+    """Directly updates credentials inside target database parameters securely."""
     if message.from_user.id != ADMIN_ID: return
     try:
         raw_text = message.text.replace("/edittask", "").strip()
@@ -340,6 +380,7 @@ def admin_edit_task(message):
 
 @bot.message_handler(commands=['sethelp'])
 def admin_set_help_tutorial(message):
+    """Saves custom layout configurations or instruction notes permanently to system records."""
     if message.from_user.id != ADMIN_ID: return
     try:
         new_content = message.text.replace("/sethelp", "").strip()
@@ -357,6 +398,7 @@ def admin_set_help_tutorial(message):
 # --- FIXED HIGH PERFORMANCE ANTI-FLOOD BROADCAST CORE ---
 @bot.message_handler(commands=['broadcast'])
 def admin_broadcast_flexible(message):
+    """Dispatches global message alerts smoothly with embedded structural rate limiting layers."""
     if message.from_user.id != ADMIN_ID: return
     text_to_send = message.text.replace("/broadcast", "").strip()
     if not text_to_send:
@@ -401,6 +443,7 @@ def admin_broadcast_flexible(message):
 
 @bot.message_handler(commands=['checkuser'])
 def admin_check_user(message):
+    """Fetches diagnostic data sheets containing financial indicators for target individual accounts."""
     if message.from_user.id != ADMIN_ID: return
     try:
         target_uid = message.text.replace("/checkuser", "").strip()
@@ -413,13 +456,18 @@ def admin_check_user(message):
             bot.send_message(ADMIN_ID, f"🔍 **User Info:**\n👤 ID: `{target_uid}`\n💰 Balance: ₹{user['balance']}\n✅ Completed: {user['completed_single_tasks']}")
     except Exception as e: pass
 
-# --- PRIMARY DISPLAY LOGIC MATRIX ---
+# ──────────────────────────────────────────────────────────────────────
+# 🛰️ SECTION 8: TEXT LOGIC CONTROLLER AND RESOLUTION ROUTERS
+# ──────────────────────────────────────────────────────────────────────
+
 @bot.message_handler(func=lambda msg: True)
 def handle_text_messages(message):
+    """Monitors standard dashboard entry operations and guides processing flow seamlessly."""
     check_and_release_expired_tasks()
     user_id = message.from_user.id
     register_user(user_id)
     
+    # Global verification status check layer
     if not is_user_joined_all(user_id):
         bot.send_message(
             message.chat.id, 
@@ -435,15 +483,18 @@ def handle_text_messages(message):
             "👇 Select your task option below to proceed:"
         )
         bot.send_message(message.chat.id, info_header, parse_mode="Markdown", reply_markup=task_options_menu())
+        
     elif message.text == "💰 Wallet":
         conn = get_db_connection()
         user = conn.execute("SELECT balance, completed_single_tasks FROM users WHERE user_id = ?", (user_id,)).fetchone()
         conn.close()
         bot.send_message(message.chat.id, f"💳 **\"Wallet Status:\"**\n💰 **\"Balance:\"** ₹{user['balance']}\n✅ **\"Completed Tasks:\"** {user['completed_single_tasks']}")
+        
     elif message.text == "👥 Invite & Earn":
         bot_info = bot.get_me()
         invite_link = f"https://t.me/{bot_info.username}?start={user_id}"
         bot.send_message(message.chat.id, f"👥 **Invite Program:** Per Invite ₹1.\n🔗 Link: `{invite_link}`", parse_mode="Markdown")
+        
     elif message.text == "💸 Withdraw":
         conn = get_db_connection()
         user = conn.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,)).fetchone()
@@ -453,24 +504,29 @@ def handle_text_messages(message):
             bot.register_next_step_handler(msg, ask_upi_id)
         else:
             bot.send_message(message.chat.id, f"❌ **Minimum withdrawal amount ₹15 hai.**")
+            
     elif message.text == "📚 Help & Tutorial":
         conn = get_db_connection()
         res = conn.execute("SELECT value FROM settings WHERE key = 'tutorial'").fetchone()
         conn.close()
         content = res['value'] if res else "📹 **No Tutorial Set by Admin yet.**"
         bot.send_message(message.chat.id, content, parse_mode="Markdown")
-    
-    # ⚙️ SCREENSHOT 19602.jpg RESPONSE ROUTING CORRECTION
+        
+    # ⚙️ FIXED INTERACTION SYSTEM FOR SCREENSHOT 19602.jpg CRASH RESOLUTION
     elif message.text == "☎️ Contact Owner & Help":
-        # Dynamic inline redirect engine linking securely to @Raka_01 profile
+        # Fires up immediate responsive inline redirection link straight to @Raka_01 profile
         markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton("📨 Direct Chat with Owner", url="https://t.me/Raka_01"))
+        markup.add(types.InlineKeyboardButton("📨 Click Here to Chat with Owner", url="https://t.me/Raka_01"))
         bot.send_message(
             message.chat.id, 
-            "☎️ **Aap niche diye gaye button par click karke direct owner (@Raka_01) se contact kar sakte hain:**", 
+            "☎️ **Aap niche diye gaye button par click karke direct owner (@Raka_01) se chat kar sakte hain:**\n\n👇 Niche button par click karein:", 
             reply_markup=markup, 
             parse_mode="Markdown"
         )
+
+# ──────────────────────────────────────────────────────────────────────
+# 🛰️ SECTION 9: TRANSACTIONS & WITHDRAWAL LOGIC FLOWS
+# ──────────────────────────────────────────────────────────────────────
 
 def ask_upi_id(message):
     try:
@@ -511,9 +567,13 @@ def process_withdrawal_admin_review(message, amount):
     
     bot.send_message(WITHDRAW_CHANNEL_ID, f"🚨 **NEW WITHDRAWAL PENDING** 🚨\n👤 User: `{user_id}`\n💵 Amount Deducted: ₹{amount}\n📱 UPI: `{upi_id}`", parse_mode="Markdown", reply_markup=wd_markup)
 
-# --- CALLBACK ROUTER SYSTEM ---
+# ──────────────────────────────────────────────────────────────────────
+# 🛰️ SECTION 10: ASYNCHRONOUS CALLBACK CALLBACK CONTROLLERS
+# ──────────────────────────────────────────────────────────────────────
+
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callbacks(call):
+    """Processes pipeline callback events cleanly and triggers targeted database states."""
     check_and_release_expired_tasks()
     user_id = call.from_user.id
     chat_id = call.message.chat.id
@@ -556,6 +616,7 @@ def handle_callbacks(call):
         conn.close()
         return
 
+    # 🟢 19600.jpg HIGH PROTECTION FLOW MATRIX SYSTEM JOCKEY
     if call.data.startswith('adm_'):
         if user_id != ADMIN_ID: return
         parts = call.data.split('_')
@@ -583,8 +644,9 @@ def handle_callbacks(call):
             conn.execute("UPDATE sessions SET status = 'APPROVED' WHERE id = ?", (session_id,))
             conn.commit()
             
+            # Exact layout render loop verified via 19600.jpg
             bot.edit_message_caption(f"🟢 **Approved! Paid ₹{final_reward} ({count_override} Gmails verified at ₹{int(selected_rate)}/ea)**", chat_id, call.message.message_id)
-            bot.send_message(target_user, f"🎉 **Admin ne aapka proof approve kar diya hai! ₹{final_reward} wallet me add ho gaya.** 💰")
+            bot.send_message(target_user, f"🎉 **Aapka proof approve kar diya gaya hai! ₹{final_reward} wallet me add ho gaya.** 💰")
             
         elif action == "rej":
             if session:
@@ -662,7 +724,10 @@ def handle_callbacks(call):
         bot.register_next_step_handler(msg, process_final_channel_proof, sid)
         conn.close()
 
-# --- CHANNEL PROOF ROUTER MANAGEMENT ---
+# ──────────────────────────────────────────────────────────────────────
+# 🛰️ SECTION 11: CHANNEL PROOF DESPATCH MANAGEMENT LAYERS (19600.jpg SYSTEM)
+# ──────────────────────────────────────────────────────────────────────
+
 def process_final_channel_proof(message, session_id):
     if not message.photo:
         bot.send_message(message.chat.id, "❌ Proof structure missing! Photo input required.")
@@ -678,6 +743,7 @@ def process_final_channel_proof(message, session_id):
     if not session: return
     ids_count = len(session['task_id_list'].split(','))
     
+    # 3-Option evaluation matrix directly pushed straight to channels as mapped in 19600.jpg
     admin_markup = types.InlineKeyboardMarkup()
     admin_markup.add(
         types.InlineKeyboardButton("🟢 Approve at ₹15/Gmail", callback_data=f"adm_rate15_{user_id}_{session_id}_{ids_count}"),
@@ -694,6 +760,9 @@ def process_final_channel_proof(message, session_id):
     )
     bot.send_message(message.chat.id, "⏳ **Aapka screenshot proof channels validation panel me bhej diya gaya hai! Next task turant shuru kar sakte hain.** 🎉")
 
-# --- START BOT ENGINE ---
-print("🚀 Master grid layout configured and text routers synchronized safely...")
+# ──────────────────────────────────────────────────────────────────────
+# 🛰️ SECTION 12: EXECUTION THREAD INITIALIZER
+# ──────────────────────────────────────────────────────────────────────
+
+print("🚀 Core framework compiled. Grid matrices are responsive on all directions...")
 bot.infinity_polling()
