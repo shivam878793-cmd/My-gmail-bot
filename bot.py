@@ -147,7 +147,7 @@ def check_and_release_expired_tasks():
     except Exception as e:
         print(f"Error in expiry checker: {e}")
 
-# --- SYSTEM DASHBOARD KEYBOARDS (19601.jpg EXACT GEOMETRIC ALIGNMENT MODIFIED) ---
+# --- SYSTEM DASHBOARD KEYBOARDS (19602.jpg ACCURATE LAYOUT MATRIX) ---
 def main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     btn1 = types.KeyboardButton("📨 Get Gmail Task")
@@ -155,9 +155,8 @@ def main_menu():
     btn3 = types.KeyboardButton("👥 Invite & Earn")
     btn4 = types.KeyboardButton("💸 Withdraw")
     btn5 = types.KeyboardButton("📚 Help & Tutorial")
-    btn6 = types.KeyboardButton("☎️ Contact Owner & Help") # Placed explicitly at the center bottom base
+    btn6 = types.KeyboardButton("☎️ Contact Owner & Help") # 19602.jpg geometric layout placement
     
-    # Structural row injection mapping sequence matching grid layout demands perfectly
     markup.add(btn1)
     markup.add(btn2, btn3)
     markup.add(btn4, btn5)
@@ -460,11 +459,18 @@ def handle_text_messages(message):
         conn.close()
         content = res['value'] if res else "📹 **No Tutorial Set by Admin yet.**"
         bot.send_message(message.chat.id, content, parse_mode="Markdown")
+    
+    # ⚙️ SCREENSHOT 19602.jpg RESPONSE ROUTING CORRECTION
     elif message.text == "☎️ Contact Owner & Help":
-        # REDIRECT CONFIGURATION TO PERSONAL USERNAME @Raka_01 (REMOVED FROM FORCE JOIN PAGE MAP)
+        # Dynamic inline redirect engine linking securely to @Raka_01 profile
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("📨 Direct Chat with Owner", url="https://t.me/Raka_01"))
-        bot.send_message(message.chat.id, "☎️ **Aap niche diye gaye button par click karke direct owner (@Raka_01) se contact kar sakte hain:**", reply_markup=markup, parse_mode="Markdown")
+        bot.send_message(
+            message.chat.id, 
+            "☎️ **Aap niche diye gaye button par click karke direct owner (@Raka_01) se contact kar sakte hain:**", 
+            reply_markup=markup, 
+            parse_mode="Markdown"
+        )
 
 def ask_upi_id(message):
     try:
@@ -656,7 +662,7 @@ def handle_callbacks(call):
         bot.register_next_step_handler(msg, process_final_channel_proof, sid)
         conn.close()
 
-# --- CHANNEL PROOF ROUTER MANAGEMENT (19600.jpg SYSTEM DEPLOYMENT) ---
+# --- CHANNEL PROOF ROUTER MANAGEMENT ---
 def process_final_channel_proof(message, session_id):
     if not message.photo:
         bot.send_message(message.chat.id, "❌ Proof structure missing! Photo input required.")
@@ -672,7 +678,6 @@ def process_final_channel_proof(message, session_id):
     if not session: return
     ids_count = len(session['task_id_list'].split(','))
     
-    # 3-Choice verification inline keys added as per screenshot 19600.jpg mapping requirement
     admin_markup = types.InlineKeyboardMarkup()
     admin_markup.add(
         types.InlineKeyboardButton("🟢 Approve at ₹15/Gmail", callback_data=f"adm_rate15_{user_id}_{session_id}_{ids_count}"),
@@ -690,5 +695,5 @@ def process_final_channel_proof(message, session_id):
     bot.send_message(message.chat.id, "⏳ **Aapka screenshot proof channels validation panel me bhej diya gaya hai! Next task turant shuru kar sakte hain.** 🎉")
 
 # --- START BOT ENGINE ---
-print("🚀 Master grid routing and informational info configuration verified completely...")
+print("🚀 Master grid layout configured and text routers synchronized safely...")
 bot.infinity_polling()
