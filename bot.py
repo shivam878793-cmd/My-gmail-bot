@@ -8,6 +8,10 @@ from telebot import types
 API_TOKEN = '7990556564:AAFYUQrYcQ7UmwbmFdjPShBFk_kLVYepRpA'
 ADMIN_ID = 8031127296
 
+# Channel Chat IDs
+GMAIL_CHANNEL_ID = -1003955255909
+WITHDRAW_CHANNEL_ID = -1004208044139
+
 bot = telebot.TeleBot(API_TOKEN)
 
 # --- DATABASE SETUP ---
@@ -338,30 +342,122 @@ def ask_upi_id(message):
             return
             
         msg = bot.send_message(message.chat.id, "📱 **Ab apni Real UPI ID bhejein:**")
-        bot.register_next_step_handler(msg, process_final_withdrawal, amount)
+        bot.register_next_step_handler(msg, process_withdrawal_admin_review, amount)
     except ValueError:
         bot.send_message(message.chat.id, "❌ **Please ek sahi number (digits) hi dalein.**")
 
-def process_final_withdrawal(message, amount):
+def process_withdrawal_admin_review(message, amount):
     user_id = message.from_user.id
     upi_id = message.text
-    try:
-        conn = get_db_connection()
-        conn.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (amount, user_id))
-        conn.commit()
-        conn.close()
-        
-        bot.send_message(message.chat.id, f"✅ **Withdrawal Request Submitted!**\n\n💰 **Amount:** ₹{amount}\n📱 **UPI ID:** {upi_id}\n\n⚠️ **Payment Under 24 Hours** me aapke UPI par transfer kar di jayegi. Shurkiya! 🙏")
-        bot.send_message(ADMIN_ID, f"🚨 **NEW WITHDRAWAL REQUEST** 🚨\n\n👤 **User:** `{user_id}`\n💰 **Amount:** ₹{amount}\n📱 **UPI ID:** `{upi_id}`", parse_mode="Markdown")
-    except:
-        bot.send_message(message.chat.id, "❌ Withdrawal process fail ho gaya, DB error.")
+    
+    # Withdrawal verify karne ke liye keyboard panel
+    wd_markup = types.InlineKeyboardMarkup()
+    wd_markup.add(
+        types.InlineKeyboardButton("🟢 Approve Payout", callback_data=f"wd_app_{user_id}_{amount}"),
+        types.InlineKeyboardButton("🔴 Reject Payout", callback_data=f"wd_rej_{user_id}_{amount}")
+    )
+    
+    # Pehle admin ko request bhejenge bina balance kaate (approval par katega)
+    bot.send_message(message.chat.id, "⏳ **Aapki Withdrawal Request Admin approval ke liye bhej di gayi hai. Kirpya thoda intezar karein!**")
+    bot.send_message(
+        ADMIN_ID, 
+        f"💰 💰 **NEW WITHDRAWAL REQUEST DETECTED** 💰 💰\n\n👤 **User ID:** `{user_id}`\n💵 **Requested Amount:** ₹{amount}\n📱 **Target UPI ID:** `{upi_id}`\n\nAction select karein niche diye panel se:", 
+        parse_mode="Markdown", 
+        reply_markup=wd_markup
+    )
 
 # --- CALLBACK QUERY HANDLERS ---
-@bot.callback_query_handler(func=lambda call: True and not call.data.startswith('adm_'))
+@bot.callback_query_handler(func=lambda call: True)
 def handle_callbacks(call):
     check_and_release_expired_tasks()
     user_id = call.from_user.id
     chat_id = call.message.chat.id
+    
+    # 1. ADMIN WITHDRAWAL SYSTEM ACTIONS
+    if call.data.startswith('wd_'):
+        if user_id != ADMIN_ID:
+            return
+        data_parts = call.data.split('_')
+        action = data_parts[1]
+        target_user = int(data_parts[2])
+        amount = float(data_parts[3])
+        
+        try:
+            conn = get_db_connection()
+            user_data = conn.execute("SELECT balance FROM users WHERE user_id = ?", (target_user,)).fetchone()
+            
+            if action == "app":
+                if user_data and user_data['balance'] >= amount:
+                    conn.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (amount, target_user))
+                    conn.commit()
+                    
+                    bot.edit_message_text(f"🟢 **Withdrawal Approved Successfully!** Amount ₹{amount} has been debited.", chat_id, call.message.message_id)
+                    bot.send_message(target_user, f"✅ **Aapka Withdrawal Approved ho gaya hai!**\n💰 Amount ₹{amount} aapke UPI par transfer kar diya gaya hai. Shurkiya! 🎉")
+                    
+                    # Withdraw proof channel par post send karein
+                    withdraw_log = f"💸 **SUCCESSFUL WITHDRAWAL** 💸\n\n👤 **User:** ID ending in `***{str(target_user)[-4:]}`\n💰 **Amount Paid:** ₹{amount}\n⚡ **Status:** Direct Transferred ✅\n🤖 **Bot:** @{bot.get_me().username}"
+                    bot.send_message(WITHDRAW_CHANNEL_ID, withdraw_log, parse_mode="Markdown")
+                else:
+                    bot.edit_message_text("❌ **Error:** User ke paas ab mandatory balance nahi hai approve karne ke liye.", chat_id, call.message.message_id)
+                    
+            elif action == "rej":
+                bot.edit_message_text(f"🔴 **Withdrawal Request Rejected!** No balance deducted.", chat_id, call.message.message_id)
+                bot.send_message(target_user, f"❌ **Aapka withdrawal request admin dwara cancel/reject kar diya gaya hai.** Aapka balance safe hai. ⚠️")
+                
+            conn.close()
+        except Exception as e:
+            bot.answer_callback_query(call.id, f"Withdraw DB Error: {e}", show_alert=True)
+        return
+
+    # 2. ADMIN GMAIL AUDIT ACTIONS
+    if call.data.startswith('adm_'):
+        if user_id != ADMIN_ID:
+            return
+        data_parts = call.data.split('_')
+        action = data_parts[1]
+        target_user = int(data_parts[2])
+        try:
+            conn = get_db_connection()
+            if action == "app":
+                task_type = data_parts[3]
+                task_id_list = data_parts[4]
+                ids = task_id_list.split(',')
+                for t_id in ids:
+                    conn.execute("UPDATE task_pool SET status = 'COMPLETED' WHERE id = ?", (int(t_id),))
+                
+                reward = 2.0 if task_type == "SINGLE" else 20.0
+                if task_type == "SINGLE":
+                    conn.execute("UPDATE users SET balance = balance + 2.0, completed_single_tasks = completed_single_tasks + 1 WHERE user_id = ?", (target_user,))
+                else:
+                    conn.execute("UPDATE users SET balance = balance + 20.0 WHERE user_id = ?", (target_user,))
+                    
+                conn.execute("DELETE FROM sessions WHERE user_id = ?", (target_user,))
+                conn.commit()
+                
+                bot.edit_message_caption("🟢 **Approved and Paid out!**", chat_id, call.message.message_id)
+                bot.send_message(target_user, f"🎉 **Congratulations! Admin ne aapka proof approve kar diya hai. Reward wallet me add ho gaya!** 💰")
+                
+                # Gmail channel pe validation screenshot proof auto forward karein
+                if call.message.photo:
+                    f_id = call.message.photo[-1].file_id
+                    channel_caption = f"📨 **NEW GMAIL TASK COMPLETED** 📨\n\n👤 **User:** ID `***{str(target_user)[-4:]}`\n🗂️ **Mode Type:** {task_type}\n💰 **Earned Reward:** ₹{reward}\n🚀 **Status:** Verified & Live ✅"
+                    bot.send_photo(GMAIL_CHANNEL_ID, f_id, caption=channel_caption, parse_mode="Markdown")
+                    
+            elif action == "rej":
+                task_id_list = data_parts[3]
+                ids = task_id_list.split(',')
+                for t_id in ids:
+                    conn.execute("UPDATE task_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ?", (int(t_id),))
+                conn.execute("DELETE FROM sessions WHERE user_id = ?", (target_user,))
+                conn.commit()
+                bot.edit_message_caption("🔴 **Rejected!**", chat_id, call.message.message_id)
+                bot.send_message(target_user, "❌ **Aapka screenshot validation failed ho gaya. Admin ne task reject kiya hai.**")
+            conn.close()
+        except Exception as e:
+            bot.answer_callback_query(call.id, f"Error: {e}", show_alert=True)
+        return
+
+    # 3. NORMAL USER TASK INTERACTION CALLS
     try:
         conn = get_db_connection()
         active_session = conn.execute("SELECT * FROM sessions WHERE user_id = ?", (user_id,)).fetchone()
@@ -451,42 +547,6 @@ def process_screenshot_proof(message, task_type, task_id_list):
     bot.send_photo(ADMIN_ID, file_id, caption=f"🛰️ **NEW PROOF SUBMITTED**\n\n👤 **User:** `{user_id}`\n🗂️ **Type:** {task_type}\n📦 **DB IDs:** `{task_id_list}`", reply_markup=admin_markup)
     bot.send_message(message.chat.id, "⏳ **Aapka proof admin panel me chala gaya hai. Verification ka wait karein.**")
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith('adm_'))
-def handle_admin_audit(call):
-    if call.from_user.id != ADMIN_ID:
-        return
-    data_parts = call.data.split('_')
-    action = data_parts[1]
-    target_user = int(data_parts[2])
-    try:
-        conn = get_db_connection()
-        if action == "app":
-            task_type = data_parts[3]
-            task_id_list = data_parts[4]
-            ids = task_id_list.split(',')
-            for t_id in ids:
-                conn.execute("UPDATE task_pool SET status = 'COMPLETED' WHERE id = ?", (int(t_id),))
-            if task_type == "SINGLE":
-                conn.execute("UPDATE users SET balance = balance + 2.0, completed_single_tasks = completed_single_tasks + 1 WHERE user_id = ?", (target_user,))
-            else:
-                conn.execute("UPDATE users SET balance = balance + 20.0 WHERE user_id = ?", (target_user,))
-            conn.execute("DELETE FROM sessions WHERE user_id = ?", (target_user,))
-            conn.commit()
-            bot.edit_message_caption("🟢 **Approved and Paid out!**", call.message.chat.id, call.message.message_id)
-            bot.send_message(target_user, f"🎉 **Congratulations! Admin ne aapka proof approve kar diya hai. Reward wallet me add ho gaya!** 💰")
-        elif action == "rej":
-            task_id_list = data_parts[3]
-            ids = task_id_list.split(',')
-            for t_id in ids:
-                conn.execute("UPDATE task_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ?", (int(t_id),))
-            conn.execute("DELETE FROM sessions WHERE user_id = ?", (target_user,))
-            conn.commit()
-            bot.edit_message_caption("🔴 **Rejected!**", call.message.chat.id, call.message.message_id)
-            bot.send_message(target_user, "❌ **Aapka screenshot validation failed ho gaya. Admin ne task reject kiya hai.**")
-        conn.close()
-    except Exception as e:
-        bot.answer_callback_query(call.id, f"Error: {e}", show_alert=True)
-
 # --- START BOT ---
-print("🚀 Bot is live with fresh emoji designs...")
+print("🚀 Bot is live with fresh channels integrated...")
 bot.infinity_polling()
