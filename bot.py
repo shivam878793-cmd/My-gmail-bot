@@ -765,4 +765,4 @@ def process_final_channel_proof(message, session_id):
 # ──────────────────────────────────────────────────────────────────────
 
 print("🚀 Master configuration initialized successfully. Listen loops functional...")
-bot.infinity_polling
+bot.infinity_polling()
