@@ -12,7 +12,7 @@ ADMIN_ID = 8031127296
 GMAIL_CHANNEL_ID = -1003955255909
 WITHDRAW_CHANNEL_ID = -1004208044139
 
-# 📢 REQ CHANNELS SET AS PER USER DEMAND
+# 📢 REQ CHANNELS (Aapke teeno channels yahan set hain)
 REQUIRED_CHANNELS = ["@Raka_Works", "@RakaXproof", "@BilibiliWorks"] 
 
 bot = telebot.TeleBot(API_TOKEN)
@@ -67,14 +67,21 @@ try:
 except Exception as e:
     print(f"Database Initialization Error: {e}")
 
-# --- CHANNEL CHECKER LOGIC ---
+# --- FIXED CHANNEL CHECKER LOGIC ---
 def is_user_joined_all(user_id):
+    # Agar direct admin check kar rha hai toh ignore karein taaki testing me dikkat na ho
+    if user_id == ADMIN_ID:
+        return True
+        
     for channel in REQUIRED_CHANNELS:
         try:
             member = bot.get_chat_member(channel, user_id)
-            if member.status in ['left', 'kicked']:
+            # Strict validation checking status
+            if member.status in ['left', 'kicked', 'bad_request']:
                 return False
-        except Exception:
+        except Exception as e:
+            # Agar bot admin nahi hai ya koi error hai toh safe side ke liye False return karega
+            print(f"Error checking channel {channel}: {e}")
             return False 
     return True
 
@@ -84,7 +91,7 @@ def force_join_keyboard():
         types.InlineKeyboardButton("📢 Join @Raka_Works", url=f"https://t.me/{REQUIRED_CHANNELS[0].replace('@','')}"),
         types.InlineKeyboardButton("📢 Join @RakaXproof", url=f"https://t.me/{REQUIRED_CHANNELS[1].replace('@','')}"),
         types.InlineKeyboardButton("📢 Join @BilibiliWorks", url=f"https://t.me/{REQUIRED_CHANNELS[2].replace('@','')}"),
-        types.InlineKeyboardButton("✅ Joined", callback_data="verify_channels")
+        types.InlineKeyboardButton("✅ Joined (Click Here)", callback_data="verify_channels")
     )
     return markup
 
@@ -178,6 +185,7 @@ def start_cmd(message):
             
     register_user(user_id, referrer_id)
     
+    # Strictly check join validation status first
     if not is_user_joined_all(user_id):
         bot.send_message(
             message.chat.id, 
@@ -262,6 +270,7 @@ def handle_text_messages(message):
     user_id = message.from_user.id
     register_user(user_id)
     
+    # Check current live status middleware layer
     if not is_user_joined_all(user_id):
         bot.send_message(
             message.chat.id, 
@@ -337,26 +346,32 @@ def handle_callbacks(call):
     user_id = call.from_user.id
     chat_id = call.message.chat.id
     
+    # 3 Channels Membership Validation Click
     if call.data == "verify_channels":
         if is_user_joined_all(user_id):
-            bot.delete_message(chat_id, call.message.message_id)
+            try:
+                bot.delete_message(chat_id, call.message.message_id)
+            except:
+                pass
             bot.send_message(chat_id, "🎉 **Channels verified successfully! All options unlocked.**", reply_markup=main_menu())
             
+            # Send detailed info alert alert straight to admin channel
             u_info = call.from_user
             alert_msg = (
                 f"👤 **NEW USER JOINED CHANNELS** 👤\n\n"
                 f"🆔 **User ID:** `{u_info.id}`\n"
-                f"Base Name: {u_info.first_name}\n"
-                f"Username: @{u_info.username if u_info.username else 'N/A'}\n"
+                f"📛 **First Name:** {u_info.first_name}\n"
+                f"username: @{u_info.username if u_info.username else 'N/A'}\n"
                 f"⚡ **Status:** Active Member"
             )
             bot.send_message(ADMIN_ID, alert_msg, parse_mode="Markdown")
         else:
-            bot.answer_callback_query(call.id, "❌ Aapne saare 3 channels join nahi kiye hain!", show_alert=True)
+            bot.answer_callback_query(call.id, "❌ Aapne saare 3 channels join nahi kiye hain! Kirpya check karein.", show_alert=True)
         return
 
+    # Middleware restriction bypass filter for other operations
     if not is_user_joined_all(user_id) and call.data != "verify_channels":
-        bot.answer_callback_query(call.id, "❌ Pehle channels join karein!", show_alert=True)
+        bot.answer_callback_query(call.id, "❌ Access Blocked! Pehle saare channels join karein.", show_alert=True)
         return
 
     if call.data.startswith('wd_'):
@@ -388,6 +403,7 @@ def handle_callbacks(call):
                 for t_id in ids:
                     conn.execute("UPDATE task_pool SET status = 'COMPLETED' WHERE id = ?", (int(t_id),))
             
+            # FIXED AUTO DETECT PRICE RULE (1-7 = ₹15, 10/10 Complete = ₹20)
             rate = 20.0 if count_override >= 10 else 15.0
             final_reward = rate * count_override
             
@@ -405,7 +421,7 @@ def handle_callbacks(call):
             conn.execute("UPDATE sessions SET status = 'REJECTED' WHERE id = ?", (session_id,))
             conn.commit()
             bot.edit_message_caption("🔴 **Rejected & Destroyed From Stock!**", chat_id, call.message.message_id)
-            bot.send_message(target_user, "❌ Aapka submission proof reject ho gaya. Credentials pool se drop ho gaye hain.")
+            bot.send_message(target_user, "❌ Aapka submission proof reject ho gaya. Credentials stock se permanently delete ho gaye hain.")
         conn.close()
         return
 
@@ -448,6 +464,7 @@ def handle_callbacks(call):
         conn.commit()
         conn.close()
         
+        # FIXED: Line se pure 10 gmails print honge pure block dashboard me
         bulk_text = "📦 **0/10 GMAIL BULK TASK LIST** 📦\n\nNiche diye gaye saare gmails line se setup karein:\n\n"
         for index, t in enumerate(tasks, 1):
             bulk_text += f"{index}️⃣. 📧 `{t['gmail']}` | 🔑 `{t['password']}`\n"
@@ -469,7 +486,7 @@ def handle_callbacks(call):
 
     elif call.data.startswith("done_"):
         sid = int(call.data.split('_')[1])
-        msg = bot.send_message(chat_id, "📸 **Aapne jitne bhi gmails banaye hain (1-10), unka composite proof screenshot image send karein:**")
+        msg = bot.send_message(chat_id, "📸 **Aapne jitne bhi gmails banaye hain, unka composite proof screenshot image send karein:**")
         bot.register_next_step_handler(msg, process_final_channel_proof, sid)
         conn.close()
 
@@ -489,6 +506,7 @@ def process_final_channel_proof(message, session_id):
     if not session: return
     ids_count = len(session['task_id_list'].split(','))
     
+    # Secure callback query execution strings mapping layout controls
     admin_markup = types.InlineKeyboardMarkup()
     admin_markup.add(
         types.InlineKeyboardButton("🟢 Approve All 10 (₹20/ea)", callback_data=f"adm_app_{user_id}_{session_id}_10"),
@@ -496,6 +514,7 @@ def process_final_channel_proof(message, session_id):
         types.InlineKeyboardButton("🔴 Reject & Delete", callback_data=f"adm_rej_{user_id}_{session_id}_0")
     )
     
+    # Direct broadcast submission block layout forward to channel logs
     bot.send_photo(
         GMAIL_CHANNEL_ID,
         file_id,
@@ -506,5 +525,5 @@ def process_final_channel_proof(message, session_id):
     bot.send_message(message.chat.id, "⏳ **Aapka screenshot proof channels validation panel me bhej diya gaya hai! No Limits system active hai, aap turant NEXT task shuru kar sakte hain.** 🎉")
 
 # --- START BOT ENGINE ---
-print("🚀 Security Channel Verification Core online with updated Raka channels...")
+print("🚀 Security Channel Verification Core online with multi-channels functionality mapping...")
 bot.infinity_polling()
