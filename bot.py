@@ -766,19 +766,39 @@ def handle_callbacks(call):
 
     elif call.data.startswith("done_"):
         sid = int(call.data.split('_')[1])
-        # Direct session context lookup routing fix applied
+        # Step handler session registration setup cleanly mapped
         msg = bot.send_message(chat_id, "📸 **PROOF SUBMISSION CENTRE**\n\nAapne jo gmail abhi successfully create kiya hai, uska clear image screenshot proof send karein:")
         bot.register_next_step_handler(msg, process_final_channel_proof, sid)
         conn.close()
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 11: CHANNEL PROOF DESPATCH MANAGEMENT LAYERS (19600.jpg SYSTEM)
+# 🛰️ SECTION 11: CRITICAL REPAIR - PHOTO INTERCEPTOR & PROOF ROUTER (19649.jpg RESOLVED)
 # ──────────────────────────────────────────────────────────────────────
 
+@bot.message_handler(content_types=['photo'])
+def catch_global_photo_proofs(message):
+    """Intercepts photo uploads globally and bypasses step text handler collisions instantly."""
+    # Strict forced join security verification mapping for photo captures
+    user_id = message.from_user.id
+    if not is_user_joined_all(user_id):
+        bot.send_message(message.chat.id, "❌ Channels verification missing!")
+        return
+
+    # Dynamic session lookup loop routing parameters
+    conn = get_db_connection()
+    # Fetches the latest pending state session record for the active calling identifier
+    session = conn.execute("SELECT * FROM sessions WHERE user_id = ? AND status = 'PENDING' ORDER BY id DESC LIMIT 1").fetchone()
+    conn.close()
+
+    if session:
+        # Route directly into processing unit without throwing text mismatches
+        process_final_channel_proof(message, session['id'])
+    else:
+        bot.send_message(message.chat.id, "❌ **SUBMISSION DENIED!**\n\nAapka koi bhi active locked task background pool me nahi mila. Pehle task uthayein!")
+
 def process_final_channel_proof(message, session_id):
-    # CRITICAL SECURITY CORRECTION: Step handlers must allow text check intercept override for photo packets
     if not message.photo:
-        bot.send_message(message.chat.id, "❌ **SUBMISSION ERROR!**\n\n⚠️ Proof verification ke liye sirf Photo/Screenshot format hi bhejni hogi. Process reset.")
+        bot.send_message(message.chat.id, "❌ **SUBMISSION ERROR!**\n\n⚠️ Proof verification ke liye sirf Photo/Screenshot format hi bhejni hogi.")
         return
         
     file_id = message.photo[-1].file_id
@@ -805,8 +825,7 @@ def process_final_channel_proof(message, session_id):
         GMAIL_CHANNEL_ID,
         file_id,
         caption=f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n👤 **User ID:** `{user_id}`\n🗂️ **Batch Type:** {session['task_type']}\n📦 **Assigned Items:** {ids_count} Gmail(s)\n\nAdmin select correct rate button from panel below:",
-        reply_markup=admin_markup,
-        for_proof_handler=True # Hard code flag wrapper update to allow direct image push bypassing text checks
+        reply_markup=admin_markup
     )
     bot.send_message(message.chat.id, "⏳ **Proof uploaded successfully! Aapka screenshot direct audit channel validation panel me bhej diya gaya hai. Next task turant shuru kar sakte hain!** 🎉")
 
@@ -814,5 +833,5 @@ def process_final_channel_proof(message, session_id):
 # 🛰️ SECTION 12: EXECUTION THREAD INITIALIZER
 # ──────────────────────────────────────────────────────────────────────
 
-print("🚀 Anti-block multi-threaded configuration complete. Bot is active...")
+print("🚀 Global photo interceptor block deployed completely. Listening live...")
 bot.infinity_polling()
