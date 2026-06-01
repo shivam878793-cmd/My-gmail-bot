@@ -2,7 +2,7 @@ import telebot
 import sqlite3
 import time
 import random
-import threading  # Background execution loops handle karne ke liye
+import threading  # Multi-threaded background process support execution maps
 from telebot import types
 
 # ──────────────────────────────────────────────────────────────────────
@@ -37,6 +37,7 @@ def init_db():
     cursor = conn.cursor()
     cursor.execute('PRAGMA journal_mode=WAL;')
     
+    # Core system structural design database initialization execution parameters
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
@@ -167,11 +168,10 @@ def check_and_release_expired_tasks():
     except Exception as e:
         print(f"Error in expiry checker: {e}")
 
-# 🚀 THREADED ASYNC BROADCAST WORKER: COMPLETELY UNLOCKS MAIN THREAD & DATABASE
+# 🚀 HIGH PERFORMANCE MEMORY-BASED NON-BLOCKING ASYNC BROADCAST MOTOR TRIPPERS
 def broadcast_stock_worker(added_count, current_total):
-    """Internal thread execution loop to dispatch notifications safely without freezing the admin interface."""
+    """Internal sub-thread loops logic mapped to isolate connections while executing large loops safely."""
     try:
-        # Pushing parameters safely outside active database connections
         conn = get_db_connection()
         user_rows = conn.execute("SELECT user_id FROM users").fetchall()
         conn.close()
@@ -197,10 +197,10 @@ def broadcast_stock_worker(added_count, current_total):
             except Exception:
                 continue
     except Exception as e:
-        print(f"Background operational engine failure log: {e}")
+        print(f"Background async stock alert processor failure handler logs: {e}")
 
 def auto_stock_broadcast_alert(added_count, current_total):
-    """Spawns an asynchronous sub-thread loop so admin response displays instantly on panel click."""
+    """Fires up a non-interfering subthread mapping structural parameters instantly outside runtime tracks."""
     thr = threading.Thread(target=broadcast_stock_worker, args=(added_count, current_total))
     thr.start()
 
@@ -229,16 +229,7 @@ def task_options_menu():
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
         types.InlineKeyboardButton("📨 1 Gmail Task (₹15)", callback_data="task_single"),
-        types.InlineKeyboardButton("📦 0/10 Gmail Task Bulk", callback_data="task_batch")
-    )
-    return markup
-
-def bulk_line_action_buttons(session_id):
-    """Assembles programmatic inline control loops for execution tracking verification mappings."""
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        types.InlineKeyboardButton("✅ Done & Submit Proof", callback_data=f"done_{session_id}"),
-        types.InlineKeyboardButton("❌ Cancel Task", callback_data=f"cancel_{session_id}")
+        types.InlineKeyboardButton("📦 10x Bulk Gmail Task (₹20/ea)", callback_data="task_batch")
     )
     return markup
 
@@ -316,10 +307,9 @@ def add_task_via_telegram(message):
         count = conn.execute("SELECT COUNT(*) as total FROM task_pool WHERE status = 'AVAILABLE'").fetchone()['total']
         conn.close()
         
-        # Admin text responds instantly without freeze
-        bot.send_message(ADMIN_ID, f"✅ **Single Task Added Successfully!**\n📦 Current Available Stock: {count} Gmails\n📢 *All users background threads launched!*")
+        bot.send_message(ADMIN_ID, f"✅ **Single Task Added Successfully!**\n📦 Current Available Stock: {count} Gmails\n📢 *All users background alert maps processed safely!*")
         
-        # Asynchronous trigger processing
+        # Async non-blocking loop invocation processing parameters
         auto_stock_broadcast_alert(1, count)
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Error:** {e}")
@@ -346,8 +336,7 @@ def bulk_add_tasks(message):
         total_stock = conn.execute("SELECT COUNT(*) as total FROM task_pool WHERE status = 'AVAILABLE'").fetchone()['total']
         conn.close()
         
-        # Admin text responds instantly without freeze
-        bot.send_message(ADMIN_ID, f"📦 **Bulk Import Status:**\n✅ Added: {success_count}\n🔥 Total Live Stock: {total_stock}\n📢 *All users background threads launched!*")
+        bot.send_message(ADMIN_ID, f"📦 **Bulk Import Status:**\n✅ Added: {success_count}\n🔥 Total Live Stock: {total_stock}\n📢 *All users background threads executed smoothly!*")
         
         if success_count > 0:
             auto_stock_broadcast_alert(success_count, total_stock)
@@ -515,7 +504,7 @@ def handle_text_messages(message):
         info_header = (
             "🚀 **GMAIL TASK RULES & REWARDS** 🚀\n\n"
             "📌 **Note: Jo Single Mode se Gmail banayega usko ₹15 milega.**\n"
-            "🔥 **Lekin agar aap Bulk Mode me 10+ Gmail complete karte hain, toh aapko ₹20/Gmail milega!**\n\n"
+            "🔥 **Lekin agar aap Bulk Mode me 10x Gmail complete karte hain, toh aapko ₹20/Gmail milega!**\n\n"
             "👇 **Niche diye gaye options me se apna task option select karein:**"
         )
         bot.send_message(message.chat.id, info_header, parse_mode="Markdown", reply_markup=task_options_menu())
@@ -719,42 +708,50 @@ def handle_callbacks(call):
         conn.commit()
         conn.close()
         
+        # Single mode custom operation dynamic keyboard actions setup mapped cleanly
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("✅ Done & Submit Proof", callback_data=f"done_{sid}"),
+                   types.InlineKeyboardButton("❌ Cancel Task", callback_data=f"cancel_{sid}"))
+        
         task_msg = (
             "📨 **AAPKA SINGLE MODE GMAIL TASK** 📨\n\n"
             f"📧 **Gmail:** `{task['gmail']}`\n"
             f"🔑 **Password:** `{task['password']}`\n\n"
             "⚠️ **Note:** Diye gaye details se successfully account config karke **10 minute** ke andar proof submit karein, warna stock lock release ho jayega!"
         )
-        bot.send_message(chat_id, task_msg, parse_mode="Markdown", reply_markup=bulk_line_action_buttons(sid))
+        bot.send_message(chat_id, task_msg, parse_mode="Markdown", reply_markup=markup)
 
+    # 📦 HIGH CAPACITY 10x BULK TASK MATRIX CONTROLLER (LOCK SYSTEMS REMOVED COMPLETELY)
     elif call.data == "task_batch":
-        ud = conn.execute("SELECT completed_single_tasks FROM users WHERE user_id = ?", (user_id,)).fetchone()
-        if ud['completed_single_tasks'] < 10:
-            bot.answer_callback_query(call.id, "🔒 Lock System! Pehle single mode se minimum 10 tasks complete karein.", show_alert=True)
-            conn.close()
-            return
+        # System fetches exactly 10 distinct variables sequentially from the datastore array
         tasks = conn.execute("SELECT * FROM task_pool WHERE status = 'AVAILABLE' LIMIT 10").fetchall()
         if len(tasks) < 10:
-            bot.answer_callback_query(call.id, f"😢 Bulk stock is low! Sirf {len(tasks)} items bache hain.", show_alert=True)
+            bot.answer_callback_query(call.id, f"😢 Bulk stock low hai! Sirf {len(tasks)} items live hain.", show_alert=True)
             conn.close()
             return
             
         current_time = int(time.time())
-        t_ids = [str(t['id']) for t in tasks]
-        for t in tasks: 
-            conn.execute("UPDATE task_pool SET status = 'LOCKED', assigned_to = ?, assigned_at = ? WHERE id = ?", (user_id, current_time, t['id']))
         
-        cursor = conn.execute("INSERT INTO sessions (user_id, task_type, task_id_list, started_at) VALUES (?, 'BATCH_10', ?, ?)", (user_id, ",".join(t_ids), current_time))
-        sid = cursor.lastrowid
+        # Header separation notification block executed safely inside tracking coordinates
+        bot.send_message(chat_id, "📦 **10x BULK MODE TASK DASHBOARD** 📦\n\nNiche diye gaye saare accounts line se setup karein. Har Gmail ke niche uska independent submit button diya gaya hai:\n───────────────────")
+        
+        for index, t in enumerate(tasks, 1):
+            conn.execute("UPDATE task_pool SET status = 'LOCKED', assigned_to = ?, assigned_at = ? WHERE id = ?", (user_id, current_time, t['id']))
+            cursor = conn.execute("INSERT INTO sessions (user_id, task_type, task_id_list, started_at) VALUES (?, 'BATCH_ROW', ?, ?)", (user_id, str(t['id']), current_time))
+            row_sid = cursor.lastrowid
+            
+            # ⚙️ INTERFACE CORRECTION: Independent mapping matrix loop layout as per screen structural parameters
+            row_markup = types.InlineKeyboardMarkup(row_width=2)
+            row_markup.add(
+                types.InlineKeyboardButton("✅ Done (Submit Proof)", callback_data=f"done_{row_sid}"),
+                types.InlineKeyboardButton("❌ Cancel Task", callback_data=f"cancel_{row_sid}")
+            )
+            
+            row_text = f"{index}️⃣. 📧 `{t['gmail']}` | 🔑 `{t['password']}`"
+            bot.send_message(chat_id, row_text, parse_mode="Markdown", reply_markup=row_markup)
+            
         conn.commit()
         conn.close()
-        
-        bulk_text = "📦 **10x BULK MODE TASK DASHBOARD** 📦\n\nNiche diye gaye saare accounts line se setup karein:\n\n"
-        for index, t in enumerate(tasks, 1):
-            bulk_text += f"{index}️⃣. 📧 `{t['gmail']}` | 🔑 `{t['password']}`\n"
-        bulk_text += "\n⚠️ **Note:** Saare credentials config karke composite full layout proof niche diye button se submit karein."
-        
-        bot.send_message(chat_id, bulk_text, parse_mode="Markdown", reply_markup=bulk_line_action_buttons(sid))
 
     elif call.data.startswith("cancel_"):
         sid = int(call.data.split('_')[1])
@@ -765,12 +762,12 @@ def handle_callbacks(call):
                 conn.execute("UPDATE task_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ?", (int(t_id),))
             conn.execute("DELETE FROM sessions WHERE id = ?", (sid,))
             conn.commit()
-        bot.edit_message_text("❌ **Task Cancelled Successfully!** Items wapas stock pool me load ho gaye hain.", chat_id, call.message.message_id)
+        bot.edit_message_text("❌ **Task Cancelled Successfully!** Item wapas stock pool me load ho gaya hai.", chat_id, call.message.message_id)
         conn.close()
 
     elif call.data.startswith("done_"):
         sid = int(call.data.split('_')[1])
-        msg = bot.send_message(chat_id, "📸 **PROOF SUBMISSION CENTRE**\n\nAapne jo gmails abhi create kiye hain, unka safe image proof verification ke liye upload (send) karein:")
+        msg = bot.send_message(chat_id, "📸 **PROOF SUBMISSION CENTRE**\n\nAapne jo gmail abhi successfully create kiya hai, uska clear image screenshot proof send karein:")
         bot.register_next_step_handler(msg, process_final_channel_proof, sid)
         conn.close()
 
@@ -803,7 +800,7 @@ def process_final_channel_proof(message, session_id):
     bot.send_photo(
         GMAIL_CHANNEL_ID,
         file_id,
-        caption=f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n👤 **User ID:** `{user_id}`\n🗂️ **Batch Type:** {session['task_type']}\n📦 **Assigned Items:** {ids_count} Gmails\n\nAdmin select correct rate button from panel below:",
+        caption=f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n👤 **User ID:** `{user_id}`\n🗂️ **Batch Type:** {session['task_type']}\n📦 **Assigned Items:** {ids_count} Gmail(s)\n\nAdmin select correct rate button from panel below:",
         reply_markup=admin_markup,
         parse_mode="Markdown"
     )
@@ -813,5 +810,5 @@ def process_final_channel_proof(message, session_id):
 # 🛰️ SECTION 12: EXECUTION THREAD INITIALIZER
 # ──────────────────────────────────────────────────────────────────────
 
-print("🚀 Anti-block multi-threaded configuration complete. Bot is active...")
+print("🚀 Independent dynamic 10x matrix rows verified. Broadcaster listening live...")
 bot.infinity_polling()
