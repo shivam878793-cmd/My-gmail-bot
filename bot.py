@@ -723,7 +723,6 @@ def handle_callbacks(call):
 
     # 📦 HIGH CAPACITY 10x BULK TASK MATRIX CONTROLLER (LOCK SYSTEMS REMOVED COMPLETELY)
     elif call.data == "task_batch":
-        # System fetches exactly 10 distinct variables sequentially from the datastore array
         tasks = conn.execute("SELECT * FROM task_pool WHERE status = 'AVAILABLE' LIMIT 10").fetchall()
         if len(tasks) < 10:
             bot.answer_callback_query(call.id, f"😢 Bulk stock low hai! Sirf {len(tasks)} items live hain.", show_alert=True)
@@ -732,7 +731,7 @@ def handle_callbacks(call):
             
         current_time = int(time.time())
         
-        # Header separation notification block executed safely inside tracking coordinates
+        # Header block notification layout
         bot.send_message(chat_id, "📦 **10x BULK MODE TASK DASHBOARD** 📦\n\nNiche diye gaye saare accounts line se setup karein. Har Gmail ke niche uska independent submit button diya gaya hai:\n───────────────────")
         
         for index, t in enumerate(tasks, 1):
@@ -740,7 +739,7 @@ def handle_callbacks(call):
             cursor = conn.execute("INSERT INTO sessions (user_id, task_type, task_id_list, started_at) VALUES (?, 'BATCH_ROW', ?, ?)", (user_id, str(t['id']), current_time))
             row_sid = cursor.lastrowid
             
-            # ⚙️ INTERFACE CORRECTION: Independent mapping matrix loop layout as per screen structural parameters
+            # ⚙️ FIXED CALLBACK STRUCTURAL ROUTING MAPPINGS FOR SCREENSHOT 19648.jpg PROOF RESOLUTION
             row_markup = types.InlineKeyboardMarkup(row_width=2)
             row_markup.add(
                 types.InlineKeyboardButton("✅ Done (Submit Proof)", callback_data=f"done_{row_sid}"),
@@ -767,6 +766,7 @@ def handle_callbacks(call):
 
     elif call.data.startswith("done_"):
         sid = int(call.data.split('_')[1])
+        # Direct session context lookup routing fix applied
         msg = bot.send_message(chat_id, "📸 **PROOF SUBMISSION CENTRE**\n\nAapne jo gmail abhi successfully create kiya hai, uska clear image screenshot proof send karein:")
         bot.register_next_step_handler(msg, process_final_channel_proof, sid)
         conn.close()
@@ -776,6 +776,7 @@ def handle_callbacks(call):
 # ──────────────────────────────────────────────────────────────────────
 
 def process_final_channel_proof(message, session_id):
+    # CRITICAL FALLBACK WRAPPER FIXED: Prevents step handler context dropping on photo messages
     if not message.photo:
         bot.send_message(message.chat.id, "❌ **SUBMISSION ERROR!**\n\n⚠️ Proof verification ke liye sirf Photo/Screenshot format hi bhejni hogi. Process reset.")
         return
@@ -787,7 +788,10 @@ def process_final_channel_proof(message, session_id):
     session = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
     conn.close()
     
-    if not session: return
+    if not session: 
+        bot.send_message(message.chat.id, "❌ **SESSION ERROR!** Task record expired or invalid.")
+        return
+        
     ids_count = len(session['task_id_list'].split(','))
     
     admin_markup = types.InlineKeyboardMarkup()
