@@ -144,7 +144,9 @@ def check_and_release_expired_tasks():
         conn = get_db_connection()
         cursor = conn.cursor()
         current_time = int(time.time())
-        expiry_limit = current_time - 600
+        
+        # ⚙️ CONFIGURATION CHANGE TRACK: Timer badhakar 60 minute (3600 seconds) kiya gaya hai
+        expiry_limit = current_time - 3600
         
         cursor.execute("SELECT id, user_id, task_id_list FROM sessions WHERE started_at < ? AND status = 'PENDING'", (expiry_limit,))
         expired_sessions = cursor.fetchall()
@@ -159,7 +161,7 @@ def check_and_release_expired_tasks():
             
             cursor.execute("DELETE FROM sessions WHERE id = ?", (sid,))
             try:
-                bot.send_message(uid, "⏰ **TIME OUT ALERT!**\n\n⚠️ Aapne **10 minute** ke andar task poora karke submit nahi kiya.\n❌ Isliye aapka task automatically **Cancel** karke wapas stock pool me bhej diya gaya hai!")
+                bot.send_message(uid, "⏰ **TIME OUT ALERT!**\n\n⚠️ Aapne **60 minute (1 ghanta)** ke andar task poora karke submit nahi kiya.\n❌ Isliye aapka task automatically **Cancel** karke wapas stock pool me bhej diya gaya hai!")
             except:
                 pass
                 
@@ -227,7 +229,7 @@ def process_final_channel_proof(message, session_id):
         
     ids_count = len(session['task_id_list'].split(','))
     
-    # Future trace labels: Identifies 10x or single mode instances straight on captions mapping arrays
+    # Dynamic label mapping parameters
     if session['task_type'] == 'BATCH_ROW':
         task_label = "📦 [10x BULK MODE TASK PROOF]"
     else:
@@ -662,7 +664,7 @@ def process_withdrawal_admin_review(message, amount):
     success_text = f"✅ **\"Withdrawal Request Submitted!\"**\n\n💰 **\"Amount:\"** ₹{amount}\n📱 **\"UPI ID:\"** {upi_id}\n\n⚠️ **\"Payment Under 24 Hours\"**"
     bot.send_message(message.chat.id, success_text, parse_mode="Markdown")
     
-    bot.send_message(WITHDRAW_CHANNEL_ID, f"🚨 **NEW WITHDRAWAL PENDING** 🚨\n\n👤 **User ID:** `{user_id}`\n💵 **Amount Deducted:** ₹{amount}\n📱 **UPI ID:** `{upi_id}`\n\nSelect action from panel:", parse_mode="Markdown", reply_markup=wd_markup)
+    bot.send_message(WITHDRAW_CHANNEL_ID, f"🚨 **NEW WITHDRAWAL PENDING** 🚨\n\n👤 **User ID:** `{user_id}`\n💵 **Amount Deducated:** ₹{amount}\n📱 **UPI ID:** `{upi_id}`\n\nSelect action from panel:", parse_mode="Markdown", reply_markup=wd_markup)
 
 # ──────────────────────────────────────────────────────────────────────
 # 🛰️ SECTION 11: ASYNCHRONOUS CALLBACK CONTROLLERS
@@ -675,7 +677,7 @@ def handle_callbacks(call):
     user_id = call.from_user.id
     chat_id = call.message.chat.id
     
-    # 💎 FEATURE ADVANCEMENT SYNC: DETECTS WHEN USER CLICKS JOINED VERIFY AND DISPATCHES DATA TO OWNER
+    # New user join channel identifier alerts hook
     if call.data == "verify_channels":
         if is_user_joined_all(user_id):
             try: bot.delete_message(chat_id, call.message.message_id)
@@ -683,8 +685,6 @@ def handle_callbacks(call):
             bot.send_message(chat_id, "🎉 **CONGRATULATIONS!**\n\n✅ Aapke saare channels successfully verify ho gaye hain! Bot functionality unlock ho chuki hai.", reply_markup=main_menu())
             
             u_info = call.from_user
-            
-            # Formulates extensive raw notification strings containing user metadata block logs
             alert_msg = (
                 f"🛰️ **NEW ACTIVE USER DETECTED** 🛰️\n\n"
                 f"👤 **Name:** {u_info.first_name} {u_info.last_name if u_info.last_name else ''}\n"
@@ -693,11 +693,8 @@ def handle_callbacks(call):
                 f"───────────────────\n"
                 f"📢 *Bande ne hamare mandatory channels successfully join karke bot activate kar liya hai!*"
             )
-            # Direct target push alerts tracking coordinates safely inside Admin ID panel
-            try:
-                bot.send_message(ADMIN_ID, alert_msg, parse_mode="Markdown")
-            except:
-                pass
+            try: bot.send_message(ADMIN_ID, alert_msg, parse_mode="Markdown")
+            except: pass
         else:
             bot.answer_callback_query(call.id, "❌ Verification failed! Please check agar aapne saare channels join kiye hain.", show_alert=True)
         return
@@ -787,7 +784,7 @@ def handle_callbacks(call):
             "📨 **AAPKA SINGLE MODE GMAIL TASK** 📨\n\n"
             f"📧 **Gmail:** `{task['gmail']}`\n"
             f"🔑 **Password:** `{task['password']}`\n\n"
-            "⚠️ **Note:** Diye gaye details se successfully account config karke **10 minute** ke andar proof submit karein, warna stock lock release ho jayega!"
+            "⚠️ **Note:** Diye gaye details se successfully account config karke **60 minute** ke andar proof submit karein, warna stock lock release ho jayega!"
         )
         bot.send_message(chat_id, task_msg, parse_mode="Markdown", reply_markup=markup)
 
