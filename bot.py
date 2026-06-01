@@ -205,7 +205,7 @@ def auto_stock_broadcast_alert(added_count, current_total):
     thr.start()
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰 *SECTION 5: HIGH-DENSITY PHOTO INTERCEPTOR SYSTEM (19649.jpg CRITICAL REPAIR)*
+# 🛰️ SECTION 5: HIGH-DENSITY PHOTO INTERCEPTOR SYSTEM (19649.jpg CRITICAL REPAIR)
 # ──────────────────────────────────────────────────────────────────────
 
 def process_final_channel_proof(message, session_id):
@@ -227,7 +227,7 @@ def process_final_channel_proof(message, session_id):
         
     ids_count = len(session['task_id_list'].split(','))
     
-    # FUTURE TRACE: Labels the photo submission explicitly so the owner can trace 10x layouts instantly
+    # Future trace labels: Identifies 10x or single mode instances straight on captions mapping arrays
     if session['task_type'] == 'BATCH_ROW':
         task_label = "📦 [10x BULK MODE TASK PROOF]"
     else:
@@ -675,6 +675,7 @@ def handle_callbacks(call):
     user_id = call.from_user.id
     chat_id = call.message.chat.id
     
+    # 💎 FEATURE ADVANCEMENT SYNC: DETECTS WHEN USER CLICKS JOINED VERIFY AND DISPATCHES DATA TO OWNER
     if call.data == "verify_channels":
         if is_user_joined_all(user_id):
             try: bot.delete_message(chat_id, call.message.message_id)
@@ -682,13 +683,21 @@ def handle_callbacks(call):
             bot.send_message(chat_id, "🎉 **CONGRATULATIONS!**\n\n✅ Aapke saare channels successfully verify ho gaye hain! Bot functionality unlock ho chuki hai.", reply_markup=main_menu())
             
             u_info = call.from_user
+            
+            # Formulates extensive raw notification strings containing user metadata block logs
             alert_msg = (
-                f"👤 **NEW USER JOINED CHANNELS** 👤\n\n"
+                f"🛰️ **NEW ACTIVE USER DETECTED** 🛰️\n\n"
+                f"👤 **Name:** {u_info.first_name} {u_info.last_name if u_info.last_name else ''}\n"
                 f"🆔 **User ID:** `{u_info.id}`\n"
-                f"📛 **First Name:** {u_info.first_name}\n"
-                f"Username: @{u_info.username if u_info.username else 'N/A'}"
+                f"📛 **Username:** @{u_info.username if u_info.username else 'N/A'}\n"
+                f"───────────────────\n"
+                f"📢 *Bande ne hamare mandatory channels successfully join karke bot activate kar liya hai!*"
             )
-            bot.send_message(ADMIN_ID, alert_msg, parse_mode="Markdown")
+            # Direct target push alerts tracking coordinates safely inside Admin ID panel
+            try:
+                bot.send_message(ADMIN_ID, alert_msg, parse_mode="Markdown")
+            except:
+                pass
         else:
             bot.answer_callback_query(call.id, "❌ Verification failed! Please check agar aapne saare channels join kiye hain.", show_alert=True)
         return
