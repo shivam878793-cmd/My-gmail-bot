@@ -205,7 +205,69 @@ def auto_stock_broadcast_alert(added_count, current_total):
     thr.start()
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 5: INTERFACE GRAPHICS & LAYOUT KEYBOARDS MAPS
+# 🛰 *SECTION 5: HIGH-DENSITY PHOTO INTERCEPTOR SYSTEM (19649.jpg CRITICAL REPAIR)*
+# ──────────────────────────────────────────────────────────────────────
+
+def process_final_channel_proof(message, session_id):
+    """Direct processing unit mapping screenshot file identifiers into validation pipeline logs."""
+    if not message.photo:
+        bot.send_message(message.chat.id, "❌ **SUBMISSION ERROR!**\n\n⚠️ Proof verification ke liye sirf Photo/Screenshot format hi bhejni hogi. Process reset.")
+        return
+        
+    file_id = message.photo[-1].file_id
+    user_id = message.from_user.id
+    
+    conn = get_db_connection()
+    session = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
+    conn.close()
+    
+    if not session: 
+        bot.send_message(message.chat.id, "❌ **SESSION ERROR!** Task record expired or invalid.")
+        return
+        
+    ids_count = len(session['task_id_list'].split(','))
+    
+    # FUTURE TRACE: Labels the photo submission explicitly so the owner can trace 10x layouts instantly
+    if session['task_type'] == 'BATCH_ROW':
+        task_label = "📦 [10x BULK MODE TASK PROOF]"
+    else:
+        task_label = "📨 [SINGLE MODE TASK PROOF]"
+    
+    admin_markup = types.InlineKeyboardMarkup()
+    admin_markup.add(
+        types.InlineKeyboardButton("🟢 Approve at ₹15/Gmail", callback_data=f"adm_rate15_{user_id}_{session_id}_{ids_count}"),
+        types.InlineKeyboardButton("🟡 Approve at ₹20/Gmail", callback_data=f"adm_rate20_{user_id}_{session_id}_{ids_count}"),
+        types.InlineKeyboardButton("🔴 Reject & Delete", callback_data=f"adm_rej_{user_id}_{session_id}_0")
+    )
+    
+    bot.send_photo(
+        GMAIL_CHANNEL_ID,
+        file_id,
+        caption=f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n📋 **TASK TYPE:** `{task_label}`\n👤 **User ID:** `{user_id}`\n📦 **Assigned Items:** {ids_count} Gmail(s)\n\nAdmin select correct rate button from panel below to verify:",
+        reply_markup=admin_markup,
+        parse_mode="Markdown"
+    )
+    bot.send_message(message.chat.id, "⏳ **Proof uploaded successfully! Aapka screenshot direct audit channel validation panel me bhej diya gaya hai. Next task turant shuru kar sakte hain!** 🎉")
+
+@bot.message_handler(content_types=['photo'])
+def catch_global_photo_proofs(message):
+    """Intercepts photo packets immediately to avoid collision with standard text handler loops."""
+    user_id = message.from_user.id
+    if not is_user_joined_all(user_id):
+        bot.send_message(message.chat.id, "❌ Channels verification missing!")
+        return
+
+    conn = get_db_connection()
+    session = conn.execute("SELECT * FROM sessions WHERE user_id = ? AND status = 'PENDING' ORDER BY id DESC LIMIT 1").fetchone()
+    conn.close()
+
+    if session:
+        process_final_channel_proof(message, session['id'])
+    else:
+        bot.send_message(message.chat.id, "❌ **SUBMISSION DENIED!**\n\nAapka koi bhi active locked task background pool me nahi mila. Pehle task uthayein!")
+
+# ──────────────────────────────────────────────────────────────────────
+# 🛰️ SECTION 6: INTERFACE GRAPHICS & LAYOUT KEYBOARDS MAPS
 # ──────────────────────────────────────────────────────────────────────
 
 def main_menu():
@@ -234,7 +296,7 @@ def task_options_menu():
     return markup
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 6: ROUTING LOGIC & GATEWAY GATEKEEPERS
+# 🛰️ SECTION 7: ROUTING LOGIC & GATEWAY GATEKEEPERS
 # ──────────────────────────────────────────────────────────────────────
 
 @bot.message_handler(commands=['start'])
@@ -265,7 +327,7 @@ def start_cmd(message):
     )
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 7: CORE ADMIN CONTROLS & MANAGEMENT SUBSYSTEMS
+# 🛰️ SECTION 8: CORE ADMIN CONTROLS & MANAGEMENT SUBSYSTEMS
 # ──────────────────────────────────────────────────────────────────────
 
 @bot.message_handler(commands=['addbalance'])
@@ -309,7 +371,6 @@ def add_task_via_telegram(message):
         
         bot.send_message(ADMIN_ID, f"✅ **Single Task Added Successfully!**\n📦 Current Available Stock: {count} Gmails\n📢 *All users background alert maps processed safely!*")
         
-        # Async non-blocking loop invocation processing parameters
         auto_stock_broadcast_alert(1, count)
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Error:** {e}")
@@ -481,7 +542,7 @@ def admin_check_user(message):
     except Exception as e: pass
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 8: TEXT LOGIC CONTROLLER AND RESOLUTION ROUTERS
+# 🛰️ SECTION 9: TEXT LOGIC CONTROLLER AND RESOLUTION ROUTERS
 # ──────────────────────────────────────────────────────────────────────
 
 @bot.message_handler(func=lambda msg: True, content_types=['text'])
@@ -561,7 +622,7 @@ def handle_text_messages(message):
         )
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 9: TRANSACTIONS & WITHDRAWAL LOGIC FLOWS
+# 🛰️ SECTION 10: TRANSACTIONS & WITHDRAWAL LOGIC FLOWS
 # ──────────────────────────────────────────────────────────────────────
 
 def ask_upi_id(message):
@@ -604,7 +665,7 @@ def process_withdrawal_admin_review(message, amount):
     bot.send_message(WITHDRAW_CHANNEL_ID, f"🚨 **NEW WITHDRAWAL PENDING** 🚨\n\n👤 **User ID:** `{user_id}`\n💵 **Amount Deducted:** ₹{amount}\n📱 **UPI ID:** `{upi_id}`\n\nSelect action from panel:", parse_mode="Markdown", reply_markup=wd_markup)
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 10: ASYNCHRONOUS CALLBACK CONTROLLERS
+# 🛰️ SECTION 11: ASYNCHRONOUS CALLBACK CONTROLLERS
 # ──────────────────────────────────────────────────────────────────────
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -739,7 +800,7 @@ def handle_callbacks(call):
             cursor = conn.execute("INSERT INTO sessions (user_id, task_type, task_id_list, started_at) VALUES (?, 'BATCH_ROW', ?, ?)", (user_id, str(t['id']), current_time))
             row_sid = cursor.lastrowid
             
-            # ⚙️ CALLBACK MAPPING AS PER SCREENSHOT 19648.jpg
+            # CALLBACK MAPPING AS PER SCREENSHOT 19648.jpg
             row_markup = types.InlineKeyboardMarkup(row_width=2)
             row_markup.add(
                 types.InlineKeyboardButton("✅ Done (Submit Proof)", callback_data=f"done_{row_sid}"),
@@ -772,66 +833,8 @@ def handle_callbacks(call):
         conn.close()
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 11: CRITICAL REPAIR - PHOTO INTERCEPTOR & PROOF ROUTER (19649.jpg RESOLVED)
-# ──────────────────────────────────────────────────────────────────────
-
-@bot.message_handler(content_types=['photo'])
-def catch_global_photo_proofs(message):
-    """Intercepts photo uploads globally and bypasses step text handler collisions instantly."""
-    # Strict forced join security verification mapping for photo captures
-    user_id = message.from_user.id
-    if not is_user_joined_all(user_id):
-        bot.send_message(message.chat.id, "❌ Channels verification missing!")
-        return
-
-    # Dynamic session lookup loop routing parameters
-    conn = get_db_connection()
-    # Fetches the latest pending state session record for the active calling identifier
-    session = conn.execute("SELECT * FROM sessions WHERE user_id = ? AND status = 'PENDING' ORDER BY id DESC LIMIT 1").fetchone()
-    conn.close()
-
-    if session:
-        # Route directly into processing unit without throwing text mismatches
-        process_final_channel_proof(message, session['id'])
-    else:
-        bot.send_message(message.chat.id, "❌ **SUBMISSION DENIED!**\n\nAapka koi bhi active locked task background pool me nahi mila. Pehle task uthayein!")
-
-def process_final_channel_proof(message, session_id):
-    if not message.photo:
-        bot.send_message(message.chat.id, "❌ **SUBMISSION ERROR!**\n\n⚠️ Proof verification ke liye sirf Photo/Screenshot format hi bhejni hogi.")
-        return
-        
-    file_id = message.photo[-1].file_id
-    user_id = message.from_user.id
-    
-    conn = get_db_connection()
-    session = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
-    conn.close()
-    
-    if not session: 
-        bot.send_message(message.chat.id, "❌ **SESSION ERROR!** Task record expired or invalid.")
-        return
-        
-    ids_count = len(session['task_id_list'].split(','))
-    
-    admin_markup = types.InlineKeyboardMarkup()
-    admin_markup.add(
-        types.InlineKeyboardButton("🟢 Approve at ₹15/Gmail", callback_data=f"adm_rate15_{user_id}_{session_id}_{ids_count}"),
-        types.InlineKeyboardButton("🟡 Approve at ₹20/Gmail", callback_data=f"adm_rate20_{user_id}_{session_id}_{ids_count}"),
-        types.InlineKeyboardButton("🔴 Reject & Delete", callback_data=f"adm_rej_{user_id}_{session_id}_0")
-    )
-    
-    bot.send_photo(
-        GMAIL_CHANNEL_ID,
-        file_id,
-        caption=f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n👤 **User ID:** `{user_id}`\n🗂️ **Batch Type:** {session['task_type']}\n📦 **Assigned Items:** {ids_count} Gmail(s)\n\nAdmin select correct rate button from panel below:",
-        reply_markup=admin_markup
-    )
-    bot.send_message(message.chat.id, "⏳ **Proof uploaded successfully! Aapka screenshot direct audit channel validation panel me bhej diya gaya hai. Next task turant shuru kar sakte hain!** 🎉")
-
-# ──────────────────────────────────────────────────────────────────────
 # 🛰️ SECTION 12: EXECUTION THREAD INITIALIZER
 # ──────────────────────────────────────────────────────────────────────
 
-print("🚀 Global photo interceptor block deployed completely. Listening live...")
+print("🚀 Anti-block multi-threaded photo pipeline deployment complete. Active...")
 bot.infinity_polling()
