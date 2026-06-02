@@ -9,7 +9,7 @@ from telebot import types
 # 🛰️ SECTION 1: MASTER CONFIGURATION & SYSTEM GLOBALS
 # ──────────────────────────────────────────────────────────────────────
 
-API_TOKEN = '7990556564:AAFYUQrYcQ7UmwbmFdjPShBFk_kLVYepRpA'
+API_TOKEN = '7990556564:AAFeSZb6lh_Ha-ojnRvEONg4zTAfFu8606c'
 ADMIN_ID = 8031127296
 
 # Telegram Logging Channel Chat IDs Directional Path Mapping
