@@ -60,6 +60,18 @@ def init_db():
         )
     ''')
     
+    # 🌟 NEW UPGRADE REGISTER: Review task master stock management architecture mapping
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS review_pool (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            review_link TEXT,
+            review_msg TEXT,
+            assigned_to INTEGER DEFAULT NULL,
+            assigned_at INTEGER DEFAULT NULL,
+            status TEXT DEFAULT 'AVAILABLE'
+        )
+    ''')
+    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS sessions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,10 +92,6 @@ def init_db():
     
     # Static master parameter initialization
     cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('tutorial', '📹 **Help & Tutorial Video:**\\n\\n[No video link set yet by admin. Use /sethelp to update]')")
-    
-    # ADVANCED FEATURE HOOK: Dynamic review configuration master elements storage settings initialization
-    cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('review_link', 'https://google.com')")
-    cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('review_msg', 'Admin ne abhi koi detailed message set nahi kiya hai. Apni achhi rating de kar screenshot bhej dein!')")
     cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('review_reward', '5.0')")
     
     conn.commit()
@@ -163,20 +171,25 @@ def check_and_release_expired_tasks():
         # Timer mapped to 60 minutes structural track intervals
         expiry_limit = current_time - 3600
         
-        cursor.execute("SELECT id, user_id, task_id_list FROM sessions WHERE started_at < ? AND status = 'PENDING'", (expiry_limit,))
+        cursor.execute("SELECT id, user_id, task_type, task_id_list FROM sessions WHERE started_at < ? AND status = 'PENDING'", (expiry_limit,))
         expired_sessions = cursor.fetchall()
         
         for session in expired_sessions:
             sid = session['id']
             uid = session['user_id']
-            if session['task_id_list'] and session['task_type'] != 'REVIEW_TASK':
+            t_type = session['task_type']
+            
+            if t_type == 'REVIEW_TASK' and session['task_id_list']:
+                # Dynamic reset logic mapping for review timeouts
+                cursor.execute("UPDATE review_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ? AND status = 'LOCKED'", (int(session['task_id_list']),))
+            elif session['task_id_list']:
                 ids = session['task_id_list'].split(',')
                 for t_id in ids:
                     cursor.execute("UPDATE task_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ? AND status = 'LOCKED'", (int(t_id),))
             
             cursor.execute("DELETE FROM sessions WHERE id = ?", (sid,))
             try:
-                bot.send_message(uid, "⏰ **TIME OUT ALERT!**\n\n⚠️ Aapne **60 minute (1 ghanta)** ke andar task poora karke submit nahi kiya.\n❌ Isliye aapka task automatically **Cancel** karke system se remove kar diya gaya hai!")
+                bot.send_message(uid, "⏰ **TIME OUT ALERT!**\n\n⚠️ Aapne **60 minute (1 ghanta)** ke andar task poora karke submit nahi kiya.\n❌ Isliye aapka task automatically **Cancel** karke system pool se release kar diya gaya hai!")
             except:
                 pass
                 
@@ -242,7 +255,6 @@ def process_final_channel_proof(message, session_id):
         bot.send_message(message.chat.id, "❌ **SESSION ERROR!** Task record expired or invalid.")
         return
         
-    # Dynamic text labels mapping setup configurations based on session task identifiers
     if session['task_type'] == 'BATCH_ROW':
         task_label = "📦 [10x BULK MODE TASK PROOF]"
         ids_count = len(session['task_id_list'].split(','))
@@ -255,14 +267,15 @@ def process_final_channel_proof(message, session_id):
         caption_text = f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n📋 **TASK TYPE:** `{task_label}`\n👤 **User ID:** `{user_id}`\n📦 **Assigned Items:** {ids_count} Gmail(s)\n\nAdmin select correct rate button from panel below to verify:"
         
     elif session['task_type'] == 'REVIEW_TASK':
-        # INTERFACE ADVANCEMENT INTEGRATION: Explicitly maps high capability review layouts inside validation channels
+        # INTERFACE ADVANCEMENT INTEGRATION: Explicitly labels review proofs with dynamic session elements mapping pointers
         task_label = "⭐ [REVIEW TASK PROOF VALIDATION]"
+        review_target_id = int(session['task_id_list'])
         admin_markup = types.InlineKeyboardMarkup()
         admin_markup.add(
-            types.InlineKeyboardButton("🟢 Approve Review Task", callback_data=f"rev_approve_{user_id}_{session_id}"),
-            types.InlineKeyboardButton("🔴 Reject Review Task", callback_data=f"rev_reject_{user_id}_{session_id}")
+            types.InlineKeyboardButton("🟢 Approve Review", callback_data=f"rev_approve_{user_id}_{session_id}_{review_target_id}"),
+            types.InlineKeyboardButton("🔴 Reject Review", callback_data=f"rev_reject_{user_id}_{session_id}_{review_target_id}")
         )
-        caption_text = f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n📋 **TASK TYPE:** `{task_label}`\n👤 **User ID:** `{user_id}`\n\n*Review Task Verification Core Panel Status Layer. Select structural action buttons beneath:* "
+        caption_text = f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n📋 **TASK TYPE:** `{task_label}`\n👤 **User ID:** `{user_id}`\n🆔 **Review Stock ID:** `{review_target_id}`\n\n*Review Task Verification Core Panel Status Layer. Select structural action buttons beneath:* "
         
     else:
         task_label = "📨 [SINGLE MODE TASK PROOF]"
@@ -316,7 +329,6 @@ def catch_global_photo_proofs(message):
 
 def main_menu():
     """Generates the absolute standard master grid mapping required fields directly inside the device frame matrix."""
-    # ADVANCED MODIFICATION LAYER: Contact button completely substituted with functional review matrices
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     btn1 = types.KeyboardButton("📨 Get Gmail Task")
     btn2 = types.KeyboardButton("💰 Wallet")
@@ -381,7 +393,7 @@ def start_cmd(message):
     )
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 8: CORE ADMIN CONTROLS & SECURITY MASTER ARRAYS
+# 🛰️ SECTION 8: CORE ADMIN CONTROLS & REVIEW POOL ARRAYS MAPPING
 # ──────────────────────────────────────────────────────────────────────
 
 @bot.message_handler(commands=['ban'])
@@ -422,38 +434,89 @@ def admin_manual_unban(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ Error: {e}")
 
-# 🚀 SYSTEM MANAGEMENT EXPANSIONS: Dynamic Review Task parameter adjustments configuration arrays setup
-@bot.message_handler(commands=['setreviewlink'])
-def admin_set_review_url_path(message):
+# 🚀 REVIEW SYSTEM EXPANSION MANAGEMENT: Full dynamic pool allocation settings and array management maps
+@bot.message_handler(commands=['addreview'])
+def admin_add_single_review_task(message):
     if message.from_user.id != ADMIN_ID: return
     try:
-        raw_url = message.text.replace("/setreviewlink", "").strip()
-        if not raw_url:
-            bot.send_message(ADMIN_ID, "❌ **Sahi Format:** `/setreviewlink <link coordinated routing text>`")
+        raw_text = message.text.replace("/addreview", "").strip()
+        if not raw_text or " : " not in raw_text:
+            bot.send_message(ADMIN_ID, "❌ **Format:** `/addreview link : message requirements`")
             return
+        r_link, r_msg = raw_text.split(" : ", 1)
         conn = get_db_connection()
-        conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('review_link', ?)", (raw_url,))
+        conn.execute("INSERT INTO review_pool (review_link, review_msg, status) VALUES (?, ?, 'AVAILABLE')", (r_link.strip(), r_msg.strip()))
         conn.commit()
+        count = conn.execute("SELECT COUNT(*) as total FROM review_pool WHERE status = 'AVAILABLE'").fetchone()['total']
         conn.close()
-        bot.send_message(ADMIN_ID, f"✅ **Review Link Updated In Database Successfully!**\n🔗 Current Path: {raw_url}")
+        bot.send_message(ADMIN_ID, f"✅ **Review Task Loaded Successfully!**\n📦 Total Available Reviews Stock: `{count}` items.")
     except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ Data Injection Fail: {e}")
+        bot.send_message(ADMIN_ID, f"❌ Data Insertion Fail: {e}")
 
-@bot.message_handler(commands=['setreviewmsg'])
-def admin_set_review_message_text(message):
+@bot.message_handler(commands=['bulkaddreview'])
+def admin_bulk_add_review_tasks(message):
     if message.from_user.id != ADMIN_ID: return
     try:
-        raw_msg = message.text.replace("/setreviewmsg", "").strip()
-        if not raw_msg:
-            bot.send_message(ADMIN_ID, "❌ **Sahi Format:** `/setreviewmsg <write full instructions details here>`")
+        raw_text = message.text.replace("/bulkaddreview", "").strip()
+        if not raw_text:
+            bot.send_message(ADMIN_ID, "❌ **Format:**\n\n`/bulkaddreview`\n`link1 : message1`\n`link2 : message2`")
             return
+        lines = raw_text.split("\n")
+        success_count = 0
         conn = get_db_connection()
-        conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('review_msg', ?)", (raw_msg,))
+        for line in lines:
+            if " : " in line:
+                try:
+                    r_link, r_msg = line.strip().split(" : ", 1)
+                    conn.execute("INSERT INTO review_pool (review_link, review_msg, status) VALUES (?, ?, 'AVAILABLE')", (r_link.strip(), r_msg.strip()))
+                    success_count += 1
+                except: pass
+        conn.commit()
+        total_stock = conn.execute("SELECT COUNT(*) as total FROM review_pool WHERE status = 'AVAILABLE'").fetchone()['total']
+        conn.close()
+        bot.send_message(ADMIN_ID, f"📦 **Bulk Review Import Status:**\n✅ Added: {success_count}\n🔥 Total Live Review Stock: {total_stock}")
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ Bulk Add Review Error: {e}")
+
+@bot.message_handler(commands=['viewreview'])
+def admin_view_review_stock(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        conn = get_db_connection()
+        reviews = conn.execute("SELECT id, review_link FROM review_pool WHERE status = 'AVAILABLE' ORDER BY id ASC LIMIT 20").fetchall()
+        total_available = conn.execute("SELECT COUNT(*) as total FROM review_pool WHERE status = 'AVAILABLE'").fetchone()['total']
+        conn.close()
+        if not reviews:
+            bot.send_message(ADMIN_ID, "📦 **Review Stock Pool Empty Hai!**")
+            return
+        stock_text = f"🔥 **LIVE AVAILABLE REVIEWS (Total: {total_available})** 🔥\n\n"
+        for r in reviews:
+            stock_text += f"🆔 `ID: {r['id']}`\n🔗 `{r['review_link']}`\n───────────────────\n"
+        bot.send_message(ADMIN_ID, stock_text, parse_mode="Markdown")
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ View Review Error: {e}")
+
+@bot.message_handler(commands=['deletereview'])
+def admin_delete_review_task(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        task_id = message.text.replace("/deletereview", "").strip()
+        if not task_id or not task_id.isdigit():
+            bot.send_message(ADMIN_ID, "❌ **Format:** `/deletereview ID`")
+            return
+        task_id = int(task_id)
+        conn = get_db_connection()
+        check = conn.execute("SELECT * FROM review_pool WHERE id = ? AND status = 'AVAILABLE'", (task_id,)).fetchone()
+        if not check:
+            bot.send_message(ADMIN_ID, f"❌ Review ID `{task_id}` stock pool me nahi mili.")
+            conn.close()
+            return
+        conn.execute("DELETE FROM review_pool WHERE id = ?", (task_id,))
         conn.commit()
         conn.close()
-        bot.send_message(ADMIN_ID, "✅ **Review Text Instructions Strings Synced In Core Datastore Stack!**")
+        bot.send_message(ADMIN_ID, f"🗑️ **Review ID `{task_id}` dropped from live pool successfully!**")
     except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ Data Injection Fail: {e}")
+        bot.send_message(ADMIN_ID, f"❌ Delete Review Error: {e}")
 
 @bot.message_handler(commands=['setreviewreward'])
 def admin_set_review_payout_amount(message):
@@ -461,16 +524,16 @@ def admin_set_review_payout_amount(message):
     try:
         raw_amt = message.text.replace("/setreviewreward", "").strip()
         if not raw_amt:
-            bot.send_message(ADMIN_ID, "❌ **Sahi Format:** `/setreviewreward <numerical float digits>`")
+            bot.send_message(ADMIN_ID, "❌ **Format:** `/setreviewreward <numerical digits>`")
             return
         reward_float = float(raw_amt)
         conn = get_db_connection()
         conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('review_reward', ?)", (str(reward_float),))
         conn.commit()
         conn.close()
-        bot.send_message(ADMIN_ID, f"✅ **Review Task Base Payout Updated!**\n💰 Reward Amount: ₹{reward_float} balance point.")
+        bot.send_message(ADMIN_ID, f"✅ **Review Task Base Payout Updated!**\n💰 Reward Amount: ₹{reward_float}")
     except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ Data Type Conversion Error: {e}")
+        bot.send_message(ADMIN_ID, f"❌ Data Conversion Error: {e}")
 
 @bot.message_handler(commands=['addbalance'])
 def admin_add_balance(message):
@@ -761,18 +824,26 @@ def handle_text_messages(message):
         content = res['value'] if res else "📹 **No Tutorial Set by Admin yet.**"
         bot.send_message(message.chat.id, content, parse_mode="Markdown")
         
-    # 🌟 CORE ENGINE UPGRADE: Interactive interface configurations mapping dynamic review workflows
+    # 🌟 CORE LOGIC MULTIPLEXING: Fetches uniquely allocated dynamic reviews directly from pool database arrays
     elif message.text == "⭐ Review Task":
         conn = get_db_connection()
-        r_link = conn.execute("SELECT value FROM settings WHERE key = 'review_link'").fetchone()['value']
-        r_msg = conn.execute("SELECT value FROM settings WHERE key = 'review_msg'").fetchone()['value']
-        r_reward = conn.execute("SELECT value FROM settings WHERE key = 'review_reward'").fetchone()['value']
-        conn.close()
         
+        # Pulls exactly 1 available review instance from the stack
+        review = conn.execute("SELECT * FROM review_pool WHERE status = 'AVAILABLE' LIMIT 1").fetchone()
+        
+        # 🔗 STOCK DEPLETED ENGINE CHECK LAYER
+        if not review:
+            bot.send_message(message.chat.id, "⚠️ **No Review Task Available!**\n\n⚡ Pool me filhal koi review task stock nahi hai. Admin jaise hi naye tasks load karenge, aapko notify kar diya jayega yrr!")
+            conn.close()
+            return
+            
+        r_reward = conn.execute("SELECT value FROM settings WHERE key = 'review_reward'").fetchone()['value']
         current_time = int(time.time())
-        conn = get_db_connection()
-        # Creates a programmatic active review tracing identifier safely inside data layout rows
-        cursor = conn.execute("INSERT INTO sessions (user_id, task_type, task_id_list, started_at) VALUES (?, 'REVIEW_TASK', 'REVIEW_SYSTEM', ?)", (user_id, current_time))
+        
+        # Lock this exact parameter index for the active calling identifier matrix
+        conn.execute("UPDATE review_pool SET status = 'LOCKED', assigned_to = ?, assigned_at = ? WHERE id = ?", (user_id, current_time, review['id']))
+        
+        cursor = conn.execute("INSERT INTO sessions (user_id, task_type, task_id_list, started_at) VALUES (?, 'REVIEW_TASK', ?, ?)", (user_id, str(review['id']), current_time))
         sid = cursor.lastrowid
         conn.commit()
         conn.close()
@@ -781,8 +852,8 @@ def handle_text_messages(message):
             "⭐ **DYNAMIC RATING & REVIEW TASK** ⭐\n\n"
             f"💰 **Task Reward Earning:** `₹{r_reward} Cash Balance` (Direct Wallet)\n"
             "───────────────────\n"
-            f"🔗 **Review Link Map Path:**\n{r_link}\n\n"
-            f"📝 **Review Text Requirements (Copy it):**\n`{r_msg}`\n\n"
+            f"🔗 **Review Link Map Path:**\n{review['review_link']}\n\n"
+            f"📝 **Review Text Requirements (Copy it):**\n`{review['review_msg']}`\n"
             "───────────────────\n"
             "⚠️ **Instructions:** Upar diye gaye link par jaakar text paste karke dynamic review karein, aur uske baad niche diye button se apna screenshot proof file submit karein yrr!"
         )
@@ -880,26 +951,29 @@ def handle_callbacks(call):
         bot.answer_callback_query(call.id, "❌ Access Blocked! Pehle channels join verify karein.", show_alert=True)
         return
 
-    # REVIEW TASK APPROVAL CORE: Handles dynamic balance updates upon valid screenshot approval selections
+    # REVIEW TASK APPROVAL SYSTEM: Reads real-time admin set rewards from the settings schema
     if call.data.startswith("rev_"):
         if user_id != ADMIN_ID: return
         parts = call.data.split("_")
-        action, target_user, session_id = parts[1], int(parts[2]), int(parts[3])
+        action, target_user, session_id, review_pool_id = parts[1], int(parts[2]), int(parts[3]), int(parts[4])
         
         conn = get_db_connection()
         if action == "approve":
             r_reward = float(conn.execute("SELECT value FROM settings WHERE key = 'review_reward'").fetchone()['value'])
             conn.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (r_reward, target_user))
+            conn.execute("UPDATE review_pool SET status = 'COMPLETED' WHERE id = ?", (review_pool_id,))
             conn.execute("UPDATE sessions SET status = 'APPROVED' WHERE id = ?", (session_id,))
             conn.commit()
-            bot.edit_message_caption(f"🟢 **Review Task Approved! Paid ₹{r_reward} to User direct wallet.**", chat_id, call.message.message_id)
-            try: bot.send_message(target_user, f"🎉 **REVIEW TASK APPROVED!**\n\nAdmin ne aapka rating verification proof accept kar liya hai!\n💰 **🔥 ₹{r_reward} Balance** aapke account profile wallet me successfully add ho chuka hai!")
+            bot.edit_message_caption(f"🟢 **Review Task Approved! Paid ₹{r_reward} to User direct wallet balance.**", chat_id, call.message.message_id)
+            try: bot.send_message(target_user, f"🎉 **REVIEW TASK APPROVED!**\n\nAdmin ne aapka verification proof accept kar liya hai!\n💰 **🔥 ₹{r_reward} Cash Reward** aapke balance profile wallet me add ho chuka hai!")
             except: pass
         elif action == "reject":
+            # Deletes from pool completely if verification checks determine invalid values
+            conn.execute("DELETE FROM review_pool WHERE id = ?", (review_pool_id,))
             conn.execute("UPDATE sessions SET status = 'REJECTED' WHERE id = ?", (session_id,))
             conn.commit()
-            bot.edit_message_caption("🔴 **Review Task Rejected & Destroyed from validation records.**", chat_id, call.message.message_id)
-            try: bot.send_message(target_user, "❌ **Aapka Review Task proof reject ho gaya hai. Kripya sahi criteria instructions padh kar dubara try karein.**")
+            bot.edit_message_caption("🔴 **Review Task Rejected & Permanently Purged From Database Stock!**", chat_id, call.message.message_id)
+            try: bot.send_message(target_user, "❌ **Aapka Review task proof audit failure ke karan reject ho gaya hai. Rules dubara padhein.**")
             except: pass
         conn.close()
         return
@@ -1032,14 +1106,16 @@ def handle_callbacks(call):
         session = conn.execute("SELECT * FROM sessions WHERE id = ?", (sid,)).fetchone()
         
         if session:
-            if session['task_type'] != 'REVIEW_TASK':
+            # ⚡ STOCK SAFETY RELEASE: Safely resets review pool parameters if a user decides to drop the task
+            if session['task_type'] == 'REVIEW_TASK':
+                conn.execute("UPDATE review_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ?", (int(session['task_id_list']),))
+            else:
                 ids = session['task_id_list'].split(',')
                 for t_id in ids:
                     conn.execute("UPDATE task_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ?", (int(t_id),))
             
             conn.execute("DELETE FROM sessions WHERE id = ?", (sid,))
             
-            # Anti-spam automated ban processing conditions mappings initialization
             if session['task_type'] != 'REVIEW_TASK':
                 conn.execute("UPDATE users SET cancel_count = cancel_count + 1 WHERE user_id = ?", (user_id,))
                 conn.commit()
@@ -1086,5 +1162,5 @@ def handle_callbacks(call):
 # 🛰️ SECTION 12: EXECUTION THREAD INITIALIZER
 # ──────────────────────────────────────────────────────────────────────
 
-print("🚀 Anti-block multi-threaded photo pipeline deployment complete. Active...")
+print("🚀 Dynamic Review Pool Multiplexer framework loaded completely. Listening live...")
 bot.infinity_polling()
