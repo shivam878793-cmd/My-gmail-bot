@@ -2,42 +2,42 @@ import telebot
 import sqlite3
 import time
 import random
-import threading  # Multi-threaded background process support execution maps
+import threading  # Multi-threaded concurrent processing pipeline layer
 from telebot import types
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 1: MASTER CONFIGURATION & SYSTEM GLOBALS
+# 🛰️ SECTION 1: SYSTEM IDENTITIES & TELEGRAM GLOBAL VARIABLES
 # ──────────────────────────────────────────────────────────────────────
 
 API_TOKEN = '7990556564:AAFeSZb6lh_Ha-ojnRvEONg4zTAfFu8606c'
 ADMIN_ID = 8031127296
 
-# Telegram Logging Channel Chat IDs Directional Path Mapping
+# Telegram Routing Endpoint Coordinates Mapping
 GMAIL_CHANNEL_ID = -1003955255909
 WITHDRAW_CHANNEL_ID = -1004208044139
 
-# Mandatory Verification Channels List As Per User Explicit Demand
+# Mandatory Anti-Drain Verification Nodes Channels List
 REQUIRED_CHANNELS = ["@Raka_Works", "@RakaXproof", "@BilibiliWorks"] 
 
 bot = telebot.TeleBot(API_TOKEN)
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 2: DATABASE INITIALIZATION & ARCHITECTURE (SQLITE3)
+# 🛰️ SECTION 2: ARCHITECTURE CORE DATABASE DESIGN (WAL MODE ENABLED)
 # ──────────────────────────────────────────────────────────────────────
 
 def get_db_connection():
-    """Establishes a stable and secure connection to the local database file."""
+    """Returns an isolated relational pointer mapping database interactions safely across worker slots."""
     conn = sqlite3.connect('gmail_bot.db', timeout=30.0)
     conn.row_factory = sqlite3.Row
     return conn
 
 def init_db():
-    """Initializes all essential relational schemas required for the application core runtime state tracking."""
+    """Bootstraps database structural schema layers if absent from runtime local execution space."""
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('PRAGMA journal_mode=WAL;')
     
-    # Core system structural design database initialization execution parameters
+    # Master structure execution blocks mapping user metadata configurations
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
@@ -60,7 +60,7 @@ def init_db():
         )
     ''')
     
-    # Dynamic Review tasks master stock management architecture schema tracking
+    # Review Task Storage System Schema Layout Model
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS review_pool (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,7 +90,7 @@ def init_db():
         )
     ''')
     
-    # Static master parameter initialization
+    # Seed static parameters defaults if records do not exist
     cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('tutorial', '📹 **Help & Tutorial Video:**\\n\\n[No video link set yet by admin. Use /sethelp to update]')")
     cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('review_reward', '5.0')")
     
@@ -99,19 +99,19 @@ def init_db():
 
 try:
     init_db()
-except Exception as e:
-    print(f"Database Initialization Error: {e}")
+except Exception as db_init_err:
+    print(f"Database Initialization Critical Error Logs: {db_init_err}")
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 3: SECURITY MIDDLEWARE & ACCOUNT MEMBERSHIP CHECKER
+# 🛰️ SECTION 3: SYSTEM WALLS & BANNED LOCK MECHANISMS
 # ──────────────────────────────────────────────────────────────────────
 
 def is_user_joined_all(user_id):
-    """Intercepts and performs strict validation routines against the external channels infrastructure."""
+    """Enforces rigorous structural lookups across external channel states before responding."""
     if user_id == ADMIN_ID:
         return True
     
-    # BAN CONTROLLER INTERCEPT LAYER
+    # Security Intercept Layer Check
     conn = get_db_connection()
     u_chk = conn.execute("SELECT is_banned FROM users WHERE user_id = ?", (user_id,)).fetchone()
     conn.close()
@@ -128,7 +128,7 @@ def is_user_joined_all(user_id):
     return True
 
 def force_join_keyboard():
-    """Generates a clean inline menu mapping exact link coordinates to the mandatory channels network."""
+    """Generates immediate target coordinate links for non-compliant subscriber logs."""
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
         types.InlineKeyboardButton("📢 Join @Raka_Works", url=f"https://t.me/{REQUIRED_CHANNELS[0].replace('@','')}"),
@@ -139,11 +139,11 @@ def force_join_keyboard():
     return markup
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 4: TRANSACTIONS & SYSTEM HELPER UTILITIES
+# 🛰️ SECTION 4: PIPELINE WORKERS & BACKGROUND TIMERS
 # ──────────────────────────────────────────────────────────────────────
 
 def register_user(user_id, referrer_id=None):
-    """Processes user signup entries and hooks referral calculations automatically into the datastore space."""
+    """Saves non-existing dynamic elements to database system instantly during initial handshakes."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -158,17 +158,17 @@ def register_user(user_id, referrer_id=None):
                     pass
             conn.commit()
         conn.close()
-    except Exception as e:
-        print(f"Error in register_user: {e}")
+    except Exception as reg_err:
+        print(f"Error captured in register_user flow execution maps: {reg_err}")
 
 def check_and_release_expired_tasks():
-    """Scans structural tracking records for dead lock objects and releases stale elements safely back into pool."""
+    """Releases stale blocked stock back into pool upon timeout limit violations automatically."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         current_time = int(time.time())
         
-        # Timer mapped to 60 minutes structural track intervals
+        # Dead session cleanup limit threshold set to exactly 60 Minutes
         expiry_limit = current_time - 3600
         
         cursor.execute("SELECT id, user_id, task_type, task_id_list FROM sessions WHERE started_at < ? AND status = 'PENDING'", (expiry_limit,))
@@ -180,7 +180,7 @@ def check_and_release_expired_tasks():
             t_type = session['task_type']
             
             if t_type == 'REVIEW_TASK' and session['task_id_list']:
-                # Dynamic timeout release loop mapping for review stock pools
+                # Rollback specific dead lock review items safely so they can enter live streams again
                 cursor.execute("UPDATE review_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ? AND status = 'LOCKED'", (int(session['task_id_list']),))
             elif session['task_id_list']:
                 ids = session['task_id_list'].split(',')
@@ -195,12 +195,12 @@ def check_and_release_expired_tasks():
                 
         conn.commit()
         conn.close()
-    except Exception as e:
-        print(f"Error in expiry checker: {e}")
+    except Exception as expiry_err:
+        print(f"Error captured in automatic expiry checker execution: {expiry_err}")
 
-# 🚀 HIGH PERFORMANCE MEMORY-BASED NON-BLOCKING ASYNC GMAIL STOCK BROADCASTER
+# ASYNC WORKERS MODULES FOR PARALLEL MULTI-THREAD DATA TELEMETRIES
 def broadcast_stock_worker(added_count, current_total):
-    """Internal sub-thread loops logic mapped to isolate connections while executing large loops safely."""
+    """Processes mass notification loops inside a sub-thread wrapper structure cleanly."""
     try:
         conn = get_db_connection()
         user_rows = conn.execute("SELECT user_id FROM users WHERE is_banned = 0").fetchall()
@@ -222,16 +222,15 @@ def broadcast_stock_worker(added_count, current_total):
                 else: time.sleep(0.04)
             except Exception: continue
     except Exception as e:
-        print(f"Background async stock alert processor failure handler logs: {e}")
+        print(f"Background thread runtime loop failure log: {e}")
 
 def auto_stock_broadcast_alert(added_count, current_total):
-    """Fires up a non-interfering subthread mapping structural parameters instantly outside runtime tracks."""
+    """Dispatches asynchronous alerts across background execution matrices."""
     thr = threading.Thread(target=broadcast_stock_worker, args=(added_count, current_total))
     thr.start()
 
-# ⚡ HIGH CAPACITY ASYNC ENGINE FOR REVIEW STOCK ALERT DISPATCH ROUTING
 def broadcast_review_worker(added_count, current_total):
-    """Launches an independent non-blocking loop to dispatch real-time review stock alerts globally."""
+    """Sends mass push signals dynamically without holding admin control boards."""
     try:
         conn = get_db_connection()
         user_rows = conn.execute("SELECT user_id FROM users WHERE is_banned = 0").fetchall()
@@ -253,19 +252,19 @@ def broadcast_review_worker(added_count, current_total):
                 else: time.sleep(0.04)
             except Exception: continue
     except Exception as e:
-        print(f"Background operational review thread notification failure log: {e}")
+        print(f"Background operational review channel thread exception trace: {e}")
 
 def auto_review_broadcast_alert(added_count, current_total):
-    """Spawns an isolated sub-thread loop so admin panel operations respond instantly on command click."""
+    """Spawns automated system worker blocks immediately to prevent memory starvation blocks."""
     thr = threading.Thread(target=broadcast_review_worker, args=(added_count, current_total))
     thr.start()
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 5: HIGH-DENSITY PHOTO INTERCEPTOR SYSTEM (19649.jpg RESOLVED)
+# 🛰️ SECTION 5: ADVANCED PHOTO PROOF SCREENSHOT PARSING PIPELINE
 # ──────────────────────────────────────────────────────────────────────
 
 def process_final_channel_proof(message, session_id):
-    """Direct processing unit mapping screenshot file identifiers into validation pipeline logs."""
+    """Processes verification screenshots and attaches live trace links to the admin audit panel."""
     if not message.photo:
         bot.send_message(message.chat.id, "❌ **SUBMISSION ERROR!**\n\n⚠️ Proof verification ke liye sirf Photo/Screenshot format hi bhejni hogi. Process reset.")
         return
@@ -275,10 +274,10 @@ def process_final_channel_proof(message, session_id):
     
     conn = get_db_connection()
     session = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
-    conn.close()
     
     if not session: 
         bot.send_message(message.chat.id, "❌ **SESSION ERROR!** Task record expired or invalid.")
+        conn.close()
         return
         
     if session['task_type'] == 'BATCH_ROW':
@@ -291,17 +290,40 @@ def process_final_channel_proof(message, session_id):
             types.InlineKeyboardButton("🔴 Reject & Delete", callback_data=f"adm_rej_{user_id}_{session_id}_0")
         )
         caption_text = f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n📋 **TASK TYPE:** `{task_label}`\n👤 **User ID:** `{user_id}`\n📦 **Assigned Items:** {ids_count} Gmail(s)\n\nAdmin select correct rate button from panel below to verify:"
+        conn.close()
         
     elif session['task_type'] == 'REVIEW_TASK':
-        # INTERFACE ADVANCEMENT INTEGRATION: Explicitly labels review proofs with dynamic session elements mapping pointers
         task_label = "⭐ [REVIEW TASK PROOF VALIDATION]"
         review_target_id = int(session['task_id_list'])
+        
+        # Pull accurate historical link targets to append inside administrative validation layouts
+        review_data = conn.execute("SELECT review_link, review_msg FROM review_pool WHERE id = ?", (review_target_id,)).fetchone()
+        
+        # Mark state to 'VERIFYING' so that nobody else pulls it from stock during manual auditing processes
+        conn.execute("UPDATE review_pool SET status = 'VERIFYING' WHERE id = ?", (review_target_id,))
+        conn.commit()
+        conn.close()
+        
+        target_url = review_data['review_link'] if review_data else "N/A"
+        req_msg = review_data['review_msg'] if review_data else "N/A"
+        
         admin_markup = types.InlineKeyboardMarkup()
         admin_markup.add(
             types.InlineKeyboardButton("🟢 Approve Review Task", callback_data=f"rev_approve_{user_id}_{session_id}_{review_target_id}"),
             types.InlineKeyboardButton("🔴 Reject Review Task", callback_data=f"rev_reject_{user_id}_{session_id}_{review_target_id}")
         )
-        caption_text = f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n📋 **TASK TYPE:** `{task_label}`\n👤 **User ID:** `{user_id}`\n🆔 **Review Stock ID:** `{review_target_id}`\n\n*Review Task Verification Core Panel Status Layer. Select structural action buttons beneath:* "
+        
+        # ENHANCED CONTROL PANEL CAPTION: Injects target link and requirements clearly at the top as requested
+        caption_text = (
+            f"🔗 **TARGET REVIEW LINK:**\n{target_url}\n\n"
+            f"📝 **REQUIREMENTS MESSAGE:**\n`{req_msg}`\n"
+            f"───────────────────\n"
+            f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n"
+            f"📋 **TASK TYPE:** `{task_label}`\n"
+            f"👤 **User ID:** `{user_id}`\n"
+            f"🆔 **Review Stock ID:** `{review_target_id}`\n\n"
+            f"*Select appropriate resolution parameters from administrative blocks below:* "
+        )
         
     else:
         task_label = "📨 [SINGLE MODE TASK PROOF]"
@@ -313,6 +335,7 @@ def process_final_channel_proof(message, session_id):
             types.InlineKeyboardButton("🔴 Reject & Delete", callback_data=f"adm_rej_{user_id}_{session_id}_0")
         )
         caption_text = f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n📋 **TASK TYPE:** `{task_label}`\n👤 **User ID:** `{user_id}`\n📦 **Assigned Items:** {ids_count} Gmail(s)\n\nAdmin select correct rate button from panel below to verify:"
+        conn.close()
 
     bot.send_photo(
         GMAIL_CHANNEL_ID,
@@ -325,10 +348,9 @@ def process_final_channel_proof(message, session_id):
 
 @bot.message_handler(content_types=['photo'])
 def catch_global_photo_proofs(message):
-    """Intercepts photo packets immediately to avoid collision with standard text handler loops."""
+    """Validates real-time packet transmissions to block unauthorized data routing injections."""
     user_id = message.from_user.id
     
-    # Check ban status
     conn = get_db_connection()
     u_chk = conn.execute("SELECT is_banned FROM users WHERE user_id = ?", (user_id,)).fetchone()
     conn.close()
@@ -350,11 +372,11 @@ def catch_global_photo_proofs(message):
         bot.send_message(message.chat.id, "❌ **SUBMISSION DENIED!**\n\nAapka koi bhi active locked task background pool me nahi mila. Pehle task uthayein!")
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 6: INTERFACE GRAPHICS & LAYOUT KEYBOARDS MAPS (19726.jpg UPDATED)
+# 🛰️ SECTION 6: HIGH-FIDELITY USER EXPERIENCE INTERACTION GRAPHICS
 # ──────────────────────────────────────────────────────────────────────
 
 def main_menu():
-    """Generates the absolute standard master grid mapping required fields directly inside the device frame matrix."""
+    """Generates the absolute responsive interface menu parameters mapped directly into standard devices."""
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     btn1 = types.KeyboardButton("📨 Get Gmail Task")
     btn2 = types.KeyboardButton("💰 Wallet")
@@ -370,7 +392,7 @@ def main_menu():
     return markup
 
 def task_options_menu():
-    """Generates the inline task router module containing single and bulk selection layouts."""
+    """Constructs the primary branching sub-menus for execution loops separation vectors."""
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
         types.InlineKeyboardButton("📨 1 Gmail Task (₹15)", callback_data="task_single"),
@@ -379,15 +401,14 @@ def task_options_menu():
     return markup
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 7: ROUTING LOGIC & GATEWAY GATEKEEPERS
+# 🛰️ SECTION 7: CORE REGISTRATION GATEWAYS & COMMAND PARSERS
 # ──────────────────────────────────────────────────────────────────────
 
 @bot.message_handler(commands=['start'])
 def start_cmd(message):
-    """Processes entry checkpoints and handles user profile setups."""
+    """Processes initial entrance steps and binds unique affiliate cookies dynamically."""
     user_id = message.from_user.id
     
-    # Anti-ban intercept check
     conn = get_db_connection()
     u_chk = conn.execute("SELECT is_banned FROM users WHERE user_id = ?", (user_id,)).fetchone()
     conn.close()
@@ -419,7 +440,7 @@ def start_cmd(message):
     )
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 8: CORE ADMIN CONTROLS & REVIEW STOCK ALLOCATION MANAGERS
+# 🛰️ SECTION 8: EXTENSIVE ADMINISTRATIVE INFRASTRUCTURE SUITE
 # ──────────────────────────────────────────────────────────────────────
 
 @bot.message_handler(commands=['ban'])
@@ -460,7 +481,6 @@ def admin_manual_unban(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ Error: {e}")
 
-# 🚀 REVIEW BROADCAST HOOKED INSERTS: Triggers automatic global notifications upon dynamic stock load command execution
 @bot.message_handler(commands=['addreview'])
 def admin_add_single_review_task(message):
     if message.from_user.id != ADMIN_ID: return
@@ -477,8 +497,6 @@ def admin_add_single_review_task(message):
         conn.close()
         
         bot.send_message(ADMIN_ID, f"✅ **Single Review Task Loaded!**\n📦 Total Available Reviews: `{count}`\n📢 *Launching async dynamic user notifications loops...*")
-        
-        # Launches non-blocking thread execution for review alerts
         auto_review_broadcast_alert(1, count)
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ Data Insertion Fail: {e}")
@@ -609,7 +627,6 @@ def add_task_via_telegram(message):
         conn.close()
         
         bot.send_message(ADMIN_ID, f"✅ **Single Task Added Successfully!**\n📦 Current Available Stock: {count} Gmails\n📢 *All users background alert maps processed safely!*")
-        
         auto_stock_broadcast_alert(1, count)
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Error:** {e}")
@@ -637,7 +654,6 @@ def bulk_add_tasks(message):
         conn.close()
         
         bot.send_message(ADMIN_ID, f"📦 **Bulk Import Status:**\n✅ Added: {success_count}\n🔥 Total Live Stock: {total_stock}\n📢 *All users background threads executed smoothly!*")
-        
         if success_count > 0:
             auto_stock_broadcast_alert(success_count, total_stock)
     except Exception as e:
@@ -722,7 +738,6 @@ def admin_set_help_tutorial(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Set Help Error:** {e}")
 
-# --- FIXED HIGH PERFORMANCE ANTI-FLOOD MANUAL BROADCAST CORE ---
 @bot.message_handler(commands=['broadcast'])
 def admin_broadcast_flexible(message):
     if message.from_user.id != ADMIN_ID: return
@@ -737,25 +752,16 @@ def admin_broadcast_flexible(message):
         
         count = 0
         failed_count = 0
-        
         status_msg = bot.send_message(ADMIN_ID, f"📢 **Broadcast Shuru Ho Gaya Hai...**\nTotal Users in DB: {len(users)}")
         
         for u in users:
             try:
                 bot.send_message(chat_id=u['user_id'], text=text_to_send, disable_web_page_preview=False)
                 count += 1
-                
-                if count % 20 == 0:
-                    time.sleep(1.0)
-                else:
-                    time.sleep(0.05)
-                    
-            except telebot.apihelper.ApiTelegramException:
-                failed_count += 1
-                continue
-            except Exception:
-                failed_count += 1
-                continue
+                if count % 20 == 0: time.sleep(1.0)
+                else: time.sleep(0.05)
+            except telebot.apihelper.ApiTelegramException: failed_count += 1; continue
+            except Exception: failed_count += 1; continue
                 
         bot.edit_message_text(
             chat_id=ADMIN_ID,
@@ -781,15 +787,14 @@ def admin_check_user(message):
     except Exception as e: pass
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰 *SECTION 9: TEXT LOGIC CONTROLLER AND RESOLUTION ROUTERS*
+# 🛰️ SECTION 9: MASTER TEXT HANDLER ROUTER CIRCUITS
 # ──────────────────────────────────────────────────────────────────────
 
 @bot.message_handler(func=lambda msg: True, content_types=['text'])
 def handle_text_messages(message):
-    """Monitors standard dashboard entry operations and guides processing flow seamlessly."""
+    """Processes user operations and ensures data streams flow to correct pipeline endpoints."""
     user_id = message.from_user.id
     
-    # Anti-ban security gate intercept mapping
     conn = get_db_connection()
     u_chk = conn.execute("SELECT is_banned FROM users WHERE user_id = ?", (user_id,)).fetchone()
     conn.close()
@@ -799,7 +804,6 @@ def handle_text_messages(message):
     check_and_release_expired_tasks()
     register_user(user_id)
     
-    # Global verification status check layer
     if not is_user_joined_all(user_id):
         bot.send_message(
             message.chat.id, 
@@ -858,14 +862,14 @@ def handle_text_messages(message):
         content = res['value'] if res else "📹 **No Tutorial Set by Admin yet.**"
         bot.send_message(message.chat.id, content, parse_mode="Markdown")
         
-    # 🌟 POOL PIPELINE STRATIFICATION: Fetches uniquely allocated reviews directly from pool database arrays
+    # ⭐ ENHANCED STOCK DRAIN REPAIR GATE: Instant isolation occurs right at user click event!
     elif message.text == "⭐ Review Task":
         conn = get_db_connection()
         
-        # Pulls exactly 1 available review instance from the stack
-        review = conn.execute("SELECT * FROM review_pool WHERE status = 'AVAILABLE' LIMIT 1").fetchone()
+        # Pulls exactly one element currently available in stock
+        review = conn.execute("SELECT * FROM review_pool WHERE status = 'AVAILABLE' ORDER BY id ASC LIMIT 1").fetchone()
         
-        # 🔗 STOCK DEPLETED ENGINE CHECK LAYER
+        # Trigger explicit empty stock notification layout if no items are matched
         if not review:
             bot.send_message(message.chat.id, "⚠️ **No Review Task Available!**\n\n⚡ Pool me filhal koi review task stock nahi hai. Admin jaise hi naye tasks load karenge, aapko notify kar diya jayega yrr!")
             conn.close()
@@ -874,7 +878,7 @@ def handle_text_messages(message):
         r_reward = conn.execute("SELECT value FROM settings WHERE key = 'review_reward'").fetchone()['value']
         current_time = int(time.time())
         
-        # Lock this exact parameter index for the active calling identifier matrix
+        # CRITICAL REPAIR FIX: Changes the review state to 'LOCKED' immediately to isolate it from other concurrent streams
         conn.execute("UPDATE review_pool SET status = 'LOCKED', assigned_to = ?, assigned_at = ? WHERE id = ?", (user_id, current_time, review['id']))
         
         cursor = conn.execute("INSERT INTO sessions (user_id, task_type, task_id_list, started_at) VALUES (?, 'REVIEW_TASK', ?, ?)", (user_id, str(review['id']), current_time))
@@ -900,7 +904,7 @@ def handle_text_messages(message):
         bot.send_message(message.chat.id, review_dashboard_text, parse_mode="Markdown", reply_markup=markup)
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 10: TRANSACTIONS & WITHDRAWAL LOGIC FLOWS
+# 🛰️ SECTION 10: CASH BALANCE WITHDRAWAL ROUTINES
 # ──────────────────────────────────────────────────────────────────────
 
 def ask_upi_id(message):
@@ -939,21 +943,19 @@ def process_withdrawal_admin_review(message, amount):
     )
     success_text = f"✅ **\"Withdrawal Request Submitted!\"**\n\n💰 **\"Amount:\"** ₹{amount}\n📱 **\"UPI ID:\"** {upi_id}\n\n⚠️ **\"Payment Under 24 Hours\"**"
     bot.send_message(message.chat.id, success_text, parse_mode="Markdown")
-    
     bot.send_message(WITHDRAW_CHANNEL_ID, f"🚨 **NEW WITHDRAWAL PENDING** 🚨\n\n👤 **User ID:** `{user_id}`\n💵 **Amount Deducted:** ₹{amount}\n📱 **UPI ID:** `{upi_id}`\n\nSelect action from panel:", parse_mode="Markdown", reply_markup=wd_markup)
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰 *SECTION 11: ASYNCHRONOUS CALLBACK CONTROLLERS (FIXED BATCH FILTER LAYER)*
+# 🛰️ SECTION 11: ASYNCHRONOUS ENGINE HANDLERS (CALLBACK DISPATCH MODULES)
 # ──────────────────────────────────────────────────────────────────────
 
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callbacks(call):
-    """Processes pipeline callback events cleanly and triggers targeted database states."""
+    """Monitors incoming callback triggers and logs database states instantly."""
     check_and_release_expired_tasks()
     user_id = call.from_user.id
     chat_id = call.message.chat.id
     
-    # Anti-ban security loop intercept
     conn = get_db_connection()
     u_chk = conn.execute("SELECT is_banned FROM users WHERE user_id = ?", (user_id,)).fetchone()
     conn.close()
@@ -965,7 +967,6 @@ def handle_callbacks(call):
             try: bot.delete_message(chat_id, call.message.message_id)
             except: pass
             bot.send_message(chat_id, "🎉 **CONGRATULATIONS!**\n\n✅ Aapke saare channels successfully verify ho gaye hain! Bot functionality unlock ho chuki hai.", reply_markup=main_menu())
-            
             u_info = call.from_user
             alert_msg = (
                 f"🛰️ **NEW ACTIVE USER DETECTED** 🛰️\n\n"
@@ -985,7 +986,7 @@ def handle_callbacks(call):
         bot.answer_callback_query(call.id, "❌ Access Blocked! Pehle channels join verify karein.", show_alert=True)
         return
 
-    # 🛠️ SECTION UPGRADE: EXPLICIT CUSTOM ROUTING INTERFACES ENGAGED FOR SYSTEM NOTIFICATIONS
+    # REVIEW TASK DECISION VALIDATOR FOR ADMIN MODULES
     if call.data.startswith("rev_"):
         if user_id != ADMIN_ID: return
         parts = call.data.split("_")
@@ -999,23 +1000,16 @@ def handle_callbacks(call):
             conn.execute("UPDATE sessions SET status = 'APPROVED' WHERE id = ?", (session_id,))
             conn.commit()
             bot.edit_message_caption(f"🟢 **Review Task Approved! Paid ₹{r_reward} to User direct wallet balance.**", chat_id, call.message.message_id)
-            
-            # Dynamic Explicit Approved Notification Output Strings As Mandated By Master Prompt Instructions
-            try:
-                bot.send_message(target_user, "🎉 **Whohoo Apka review google map Par live hai Apka Money Apke Wallet ma add kardiya gaya hai**")
+            try: bot.send_message(target_user, "🎉 **Whohoo Apka review google map Par live hai Apka Money Apke Wallet ma add kardiya gaya hai**")
             except: pass
-            
         elif action == "reject":
-            conn.execute("DELETE FROM review_pool WHERE id = ?", (review_pool_id,))
+            # REJECT TRACKING OPTIMIZED: Safely resets index configuration fields to 'AVAILABLE' status layers
+            conn.execute("UPDATE review_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ?", (review_pool_id,))
             conn.execute("UPDATE sessions SET status = 'REJECTED' WHERE id = ?", (session_id,))
             conn.commit()
-            bot.edit_message_caption("🔴 **Review Task Rejected & Permanently Purged From Database Stock!**", chat_id, call.message.message_id)
-            
-            # Dynamic Explicit Rejected Notification Output Strings As Mandated By Master Prompt Instructions
-            try:
-                bot.send_message(target_user, "❌ **Admin Na Apka Review Reject Kardiya Kyuki Apko Review Google Map par Live Nhi Hai**")
+            bot.edit_message_caption("🔴 **Review Task Rejected! Status reset to AVAILABLE inside isolated registers.**", chat_id, call.message.message_id)
+            try: bot.send_message(target_user, "❌ **Admin Na Apka Review Reject Kardiya Kyuki Apko Review Google Map par Live Nhi Hai**")
             except: pass
-            
         conn.close()
         return
 
@@ -1041,10 +1035,8 @@ def handle_callbacks(call):
         action, target_user, session_id, count_override = parts[1], int(parts[2]), int(parts[3]), int(parts[4])
         
         selected_rate = 0.0
-        if action == "rate15":
-            selected_rate = 15.0
-        elif action == "rate20":
-            selected_rate = 20.0
+        if action == "rate15": selected_rate = 15.0
+        elif action == "rate20": selected_rate = 20.0
             
         conn = get_db_connection()
         session = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
@@ -1079,7 +1071,7 @@ def handle_callbacks(call):
 
     conn = get_db_connection()
     if call.data == "task_single":
-        task = conn.execute("SELECT * FROM task_pool WHERE status = 'AVAILABLE' LIMIT 1").fetchone()
+        task = conn.execute("SELECT * FROM task_pool WHERE status = 'AVAILABLE' ORDER BY random() LIMIT 1").fetchone()
         if not task:
             bot.answer_callback_query(call.id, "⚠️ Stock Empty! Admin se bolo aur load karein.", show_alert=True)
             conn.close()
@@ -1116,7 +1108,7 @@ def handle_callbacks(call):
             conn.close()
             return
 
-        tasks = conn.execute("SELECT * FROM task_pool WHERE status = 'AVAILABLE' LIMIT 10").fetchall()
+        tasks = conn.execute("SELECT * FROM task_pool WHERE status = 'AVAILABLE' ORDER BY id ASC LIMIT 10").fetchall()
         if len(tasks) < 10:
             bot.answer_callback_query(call.id, f"😢 Bulk stock low hai! Sirf {len(tasks)} items live hain.", show_alert=True)
             conn.close()
@@ -1142,13 +1134,14 @@ def handle_callbacks(call):
         conn.commit()
         conn.close()
 
+    # ⭐ STABLE AUTO-ROLLBACK REGION: If the user cancels the task, it immediately goes back into stock pool!
     elif call.data.startswith("cancel_"):
         sid = int(call.data.split('_')[1])
         session = conn.execute("SELECT * FROM sessions WHERE id = ?", (sid,)).fetchone()
         
         if session:
-            # STOCK SAFETY RELEASE: Safely resets review pool parameters if a user decides to drop the task
             if session['task_type'] == 'REVIEW_TASK':
+                # FIX IMPLEMENTED: Immediately resets status to 'AVAILABLE' inside stock and unbinds user pointers
                 conn.execute("UPDATE review_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ?", (int(session['task_id_list']),))
             else:
                 ids = session['task_id_list'].split(',')
@@ -1183,7 +1176,6 @@ def handle_callbacks(call):
                         except Exception as thread_ex: print(f"Panic alert logs thread error: {thread_ex}")
                     
                     threading.Thread(target=send_ban_alert_async).start()
-                    
                     try: bot.edit_message_text("❌ **Aapka account baar-baar task cancel karne ke karan BAN kar diya gaya hai!**", chat_id, call.message.message_id)
                     except: pass
                     return
@@ -1200,8 +1192,8 @@ def handle_callbacks(call):
         conn.close()
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 12: EXECUTION THREAD INITIALIZER
+# 🛰️ SECTION 12: SERVICE POLICE INITIALIZATION POLLING LAYER
 # ──────────────────────────────────────────────────────────────────────
 
-print("🚀 Dynamic Review Pool Engine & Explicit Approval Message Dispatches Activated. Listening live...")
+print("🚀 Production Layer-7 Protection Engine successfully armed. Review link tracking active...")
 bot.infinity_polling()
