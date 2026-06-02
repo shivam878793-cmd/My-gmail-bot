@@ -229,7 +229,7 @@ def auto_stock_broadcast_alert(added_count, current_total):
     thr = threading.Thread(target=broadcast_stock_worker, args=(added_count, current_total))
     thr.start()
 
-# 🌟 NEW UPGRADE: HIGH CAPACITY ASYNC ENGINE FOR REVIEW STOCK ALERT DISPATCH ROUTING
+# ⚡ HIGH CAPACITY ASYNC ENGINE FOR REVIEW STOCK ALERT DISPATCH ROUTING
 def broadcast_review_worker(added_count, current_total):
     """Launches an independent non-blocking loop to dispatch real-time review stock alerts globally."""
     try:
@@ -293,7 +293,7 @@ def process_final_channel_proof(message, session_id):
         caption_text = f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n📋 **TASK TYPE:** `{task_label}`\n👤 **User ID:** `{user_id}`\n📦 **Assigned Items:** {ids_count} Gmail(s)\n\nAdmin select correct rate button from panel below to verify:"
         
     elif session['task_type'] == 'REVIEW_TASK':
-        # INTERFACE ADVANCEMENT SYNC: Maps fully customized structured review proofs directly into channels mapping arrays
+        # INTERFACE ADVANCEMENT INTEGRATION: Explicitly labels review proofs with dynamic session elements mapping pointers
         task_label = "⭐ [REVIEW TASK PROOF VALIDATION]"
         review_target_id = int(session['task_id_list'])
         admin_markup = types.InlineKeyboardMarkup()
@@ -460,7 +460,7 @@ def admin_manual_unban(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ Error: {e}")
 
-# 🌟 REVIEW BROADCAST HOOKED INSERTS: Triggers automatic global notifications upon dynamic stock load command execution
+# 🚀 REVIEW BROADCAST HOOKED INSERTS: Triggers automatic global notifications upon dynamic stock load command execution
 @bot.message_handler(commands=['addreview'])
 def admin_add_single_review_task(message):
     if message.from_user.id != ADMIN_ID: return
@@ -858,7 +858,7 @@ def handle_text_messages(message):
         content = res['value'] if res else "📹 **No Tutorial Set by Admin yet.**"
         bot.send_message(message.chat.id, content, parse_mode="Markdown")
         
-    # 🌟 POOL PIPELINE STRATIFICATION: Fetches uniquely allocated dynamic reviews directly from dynamic pool database arrays
+    # 🌟 POOL PIPELINE STRATIFICATION: Fetches uniquely allocated reviews directly from pool database arrays
     elif message.text == "⭐ Review Task":
         conn = get_db_connection()
         
@@ -985,7 +985,7 @@ def handle_callbacks(call):
         bot.answer_callback_query(call.id, "❌ Access Blocked! Pehle channels join verify karein.", show_alert=True)
         return
 
-    # REVIEW TASK APPROVAL SYSTEM: Reads real-time admin set rewards from the settings schema
+    # 🛠️ SECTION UPGRADE: EXPLICIT CUSTOM ROUTING INTERFACES ENGAGED FOR SYSTEM NOTIFICATIONS
     if call.data.startswith("rev_"):
         if user_id != ADMIN_ID: return
         parts = call.data.split("_")
@@ -999,16 +999,23 @@ def handle_callbacks(call):
             conn.execute("UPDATE sessions SET status = 'APPROVED' WHERE id = ?", (session_id,))
             conn.commit()
             bot.edit_message_caption(f"🟢 **Review Task Approved! Paid ₹{r_reward} to User direct wallet balance.**", chat_id, call.message.message_id)
-            try: bot.send_message(target_user, f"🎉 **REVIEW TASK APPROVED!**\n\nAdmin ne aapka verification proof accept kar liya hai!\n💰 **🔥 ₹{r_reward} Cash Reward** aapke balance profile wallet me add ho chuka hai!")
+            
+            # Dynamic Explicit Approved Notification Output Strings As Mandated By Master Prompt Instructions
+            try:
+                bot.send_message(target_user, "🎉 **Whohoo Apka review google map Par live hai Apka Money Apke Wallet ma add kardiya gaya hai**")
             except: pass
+            
         elif action == "reject":
-            # Deletes from pool completely if verification checks determine invalid values
             conn.execute("DELETE FROM review_pool WHERE id = ?", (review_pool_id,))
             conn.execute("UPDATE sessions SET status = 'REJECTED' WHERE id = ?", (session_id,))
             conn.commit()
             bot.edit_message_caption("🔴 **Review Task Rejected & Permanently Purged From Database Stock!**", chat_id, call.message.message_id)
-            try: bot.send_message(target_user, "❌ **Aapka Review task proof audit failure ke karan reject ho gaya hai. Rules dubara padhein.**")
+            
+            # Dynamic Explicit Rejected Notification Output Strings As Mandated By Master Prompt Instructions
+            try:
+                bot.send_message(target_user, "❌ **Admin Na Apka Review Reject Kardiya Kyuki Apko Review Google Map par Live Nhi Hai**")
             except: pass
+            
         conn.close()
         return
 
@@ -1140,7 +1147,7 @@ def handle_callbacks(call):
         session = conn.execute("SELECT * FROM sessions WHERE id = ?", (sid,)).fetchone()
         
         if session:
-            # ⚡ STOCK SAFETY RELEASE: Safely resets review pool parameters if a user decides to drop the task
+            # STOCK SAFETY RELEASE: Safely resets review pool parameters if a user decides to drop the task
             if session['task_type'] == 'REVIEW_TASK':
                 conn.execute("UPDATE review_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ?", (int(session['task_id_list']),))
             else:
@@ -1196,5 +1203,5 @@ def handle_callbacks(call):
 # 🛰️ SECTION 12: EXECUTION THREAD INITIALIZER
 # ──────────────────────────────────────────────────────────────────────
 
-print("🚀 Dynamic Review Pool Multiplexer framework loaded completely. Listening live...")
+print("🚀 Dynamic Review Pool Engine & Explicit Approval Message Dispatches Activated. Listening live...")
 bot.infinity_polling()
