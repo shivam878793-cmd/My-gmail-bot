@@ -239,6 +239,7 @@ def process_final_channel_proof(message, session_id):
         
     ids_count = len(session['task_id_list'].split(','))
     
+    # Dynamic label mapping parameters
     if session['task_type'] == 'BATCH_ROW':
         task_label = "📦 [10x BULK MODE TASK PROOF]"
     else:
@@ -440,7 +441,7 @@ def add_task_via_telegram(message):
         
         auto_stock_broadcast_alert(1, count)
     except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ **Format Error:** {e}")
+        bot.send_message(ADMIN_ID, f"❌ **Error:** {e}")
 
 @bot.message_handler(commands=['bulkadd'])
 def bulk_add_tasks(message):
@@ -866,13 +867,13 @@ def handle_callbacks(call):
         )
         bot.send_message(chat_id, task_msg, parse_mode="Markdown", reply_markup=markup)
 
-    # 📦 HIGH CAPACITY 10x BULK TASK MATRIX CONTROLLER (5x COMPLETION FROM RUNNING SESSIONS - UNLOCKED PRE-APPROVAL)
+    # 📦 HIGH CAPACITY 10x BULK TASK MATRIX CONTROLLER (5x SUBMISSION RUNNING LOCK PROTECTION - UNLOCKED PRE-APPROVAL)
     elif call.data == "task_batch":
-        # ⚙️ LOGIC UPDATE MATRIX: Mapped to query historical raw active/pending rows submitted records
+        # ⚙️ LOGIC REPAIR TRACK: Count calculations mapped directly to historical pending/running records arrays
         submitted_rows = conn.execute("SELECT COUNT(*) as total FROM sessions WHERE user_id = ? AND task_type = 'SINGLE'", (user_id,)).fetchone()
         current_submissions = submitted_rows['total'] if submitted_rows else 0
         
-        # 🔒 LOCK VERIFICATION LOGIC: Requires exactly 5 submitted items to enter bulk space (Pre-approval ready)
+        # 🔒 PRE-APPROVAL LAYER ACTIVE: Unlocks bulk entry dynamically when 5 single screenshots are sent
         if current_submissions < 5:
             bot.answer_callback_query(
                 call.id, 
@@ -930,11 +931,14 @@ def handle_callbacks(call):
                 conn.execute("UPDATE users SET is_banned = 1 WHERE user_id = ?", (user_id,))
                 conn.commit()
                 
+                # Close the connection BEFORE firing async notifications to release main thread lock variables
+                conn.close()
+                
                 # Despatches real-time security threats data to owner frame
                 u_info = call.from_user
                 ban_alert_msg = (
                     f"🚨 **SECURITY ALERT: ANTI-SPAM AUTO BAN** 🚨\n\n"
-                    f"👤 **User Name:** {u_info.first_name}\n"
+                    f"👤 **User Name:** {u_info.first_name} {u_info.last_name if u_info.last_name else ''}\n"
                     f"🆔 **User ID:** `{user_id}`\n"
                     f"📛 **Username:** @{u_info.username if u_info.username else 'N/A'}\n"
                     f"⚠️ **Total Cancel Movements:** {u_update['cancel_count']} times\n"
@@ -942,14 +946,19 @@ def handle_callbacks(call):
                     f"🚫 *Bande ne baar-baar stock cancel karke limit cross kar di thi, isliye bot ne use AUTOMATICALLY BAN kar diya hai!*"
                 )
                 
-                # ⚙️ REPAIR SYSTEM ALERTS: Direct out-of-loop execution sync mapping fixed to push data cleanly into ADMIN_ID panel
-                try:
-                    bot.send_message(chat_id=ADMIN_ID, text=ban_alert_msg, parse_mode="Markdown")
-                except Exception as ex:
-                    print(f"Panic log on security thread transmission: {ex}")
+                # ⚙️ HIGH-SECURITY DIRECT THREAD DISPATCH MAPS: Bypasses callback state to prevent freeze/skips
+                def send_ban_alert_async():
+                    try:
+                        bot.send_message(chat_id=ADMIN_ID, text=ban_alert_msg, parse_mode="Markdown")
+                    except Exception as thread_ex:
+                        print(f"Panic logging on isolated alert thread context: {thread_ex}")
                 
-                bot.edit_message_text("❌ **Aapka account baar-baar task cancel karne ke karan BAN kar diya gaya hai!**", chat_id, call.message.message_id)
-                conn.close()
+                threading.Thread(target=send_ban_alert_async).start()
+                
+                try:
+                    bot.edit_message_text("❌ **Aapka account baar-baar task cancel karne ke karan BAN kar diya gaya hai!**", chat_id, call.message.message_id)
+                except:
+                    pass
                 return
 
         bot.edit_message_text("❌ **Task Cancelled!** Item wapas stock pool me load ho gaya hai.", chat_id, call.message.message_id)
@@ -965,5 +974,5 @@ def handle_callbacks(call):
 # 🛰️ SECTION 12: EXECUTION THREAD INITIALIZER
 # ──────────────────────────────────────────────────────────────────────
 
-print("🚀 Security Auto-Ban alert routing & Unapproved 5x Bulk activation lock deployed. Online...")
+print("🚀 Anti-block multi-threaded photo pipeline deployment complete. Active...")
 bot.infinity_polling()
