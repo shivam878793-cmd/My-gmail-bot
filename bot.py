@@ -440,7 +440,7 @@ def add_task_via_telegram(message):
         
         auto_stock_broadcast_alert(1, count)
     except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ **Error:** {e}")
+        bot.send_message(ADMIN_ID, f"❌ **Format Error:** {e}")
 
 @bot.message_handler(commands=['bulkadd'])
 def bulk_add_tasks(message):
@@ -740,7 +740,7 @@ def process_withdrawal_admin_review(message, amount):
     bot.send_message(WITHDRAW_CHANNEL_ID, f"🚨 **NEW WITHDRAWAL PENDING** 🚨\n\n👤 **User ID:** `{user_id}`\n💵 **Amount Deducted:** ₹{amount}\n📱 **UPI ID:** `{upi_id}`\n\nSelect action from panel:", parse_mode="Markdown", reply_markup=wd_markup)
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰 *SECTION 11: ASYNCHRONOUS CALLBACK CONTROLLERS (LOCK & SPAM ENGINE)*
+# 🛰 *SECTION 11: ASYNCHRONOUS CALLBACK CONTROLLERS (FIXED BATCH FILTER LAYER)*
 # ──────────────────────────────────────────────────────────────────────
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -866,16 +866,17 @@ def handle_callbacks(call):
         )
         bot.send_message(chat_id, task_msg, parse_mode="Markdown", reply_markup=markup)
 
-    # 📦 HIGH CAPACITY 10x BULK TASK MATRIX CONTROLLER (5x COMPLETION LOCK PROTECTION ENGAGED)
+    # 📦 HIGH CAPACITY 10x BULK TASK MATRIX CONTROLLER (5x COMPLETION FROM RUNNING SESSIONS - UNLOCKED PRE-APPROVAL)
     elif call.data == "task_batch":
-        u_data = conn.execute("SELECT completed_single_tasks FROM users WHERE user_id = ?", (user_id,)).fetchone()
+        # ⚙️ LOGIC UPDATE MATRIX: Mapped to query historical raw active/pending rows submitted records
+        submitted_rows = conn.execute("SELECT COUNT(*) as total FROM sessions WHERE user_id = ? AND task_type = 'SINGLE'", (user_id,)).fetchone()
+        current_submissions = submitted_rows['total'] if submitted_rows else 0
         
-        # 🔒 LOCK VERIFICATION LOGIC: Requires exactly 5 completed items to enter bulk space
-        if not u_data or u_data['completed_single_tasks'] < 5:
-            current_done = u_data['completed_single_tasks'] if u_data else 0
+        # 🔒 LOCK VERIFICATION LOGIC: Requires exactly 5 submitted items to enter bulk space (Pre-approval ready)
+        if current_submissions < 5:
             bot.answer_callback_query(
                 call.id, 
-                f"🔒 Locked System! Pehle Single mode se kam se kam 5 Gmail complete karo yrr. (Aapka Current Done: {current_done}/5)", 
+                f"🔒 Locked System! Pehle Single mode se kam se kam 5 Gmail submit karo yrr. Approve hone se pehle hi khul jayega! (Aapka Current Submitted: {current_submissions}/5)", 
                 show_alert=True
             )
             conn.close()
@@ -940,8 +941,12 @@ def handle_callbacks(call):
                     f"───────────────────\n"
                     f"🚫 *Bande ne baar-baar stock cancel karke limit cross kar di thi, isliye bot ne use AUTOMATICALLY BAN kar diya hai!*"
                 )
-                try: bot.send_message(ADMIN_ID, ban_alert_msg, parse_mode="Markdown")
-                except: pass
+                
+                # ⚙️ REPAIR SYSTEM ALERTS: Direct out-of-loop execution sync mapping fixed to push data cleanly into ADMIN_ID panel
+                try:
+                    bot.send_message(chat_id=ADMIN_ID, text=ban_alert_msg, parse_mode="Markdown")
+                except Exception as ex:
+                    print(f"Panic log on security thread transmission: {ex}")
                 
                 bot.edit_message_text("❌ **Aapka account baar-baar task cancel karne ke karan BAN kar diya gaya hai!**", chat_id, call.message.message_id)
                 conn.close()
@@ -960,5 +965,5 @@ def handle_callbacks(call):
 # 🛰️ SECTION 12: EXECUTION THREAD INITIALIZER
 # ──────────────────────────────────────────────────────────────────────
 
-print("🚀 Security Auto-Ban engine & 5x Completion validation locks deployed. Online...")
+print("🚀 Security Auto-Ban alert routing & Unapproved 5x Bulk activation lock deployed. Online...")
 bot.infinity_polling()
