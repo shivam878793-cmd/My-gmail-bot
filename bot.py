@@ -60,7 +60,7 @@ def init_db():
         )
     ''')
     
-    # 🌟 NEW UPGRADE REGISTER: Review task master stock management architecture mapping
+    # Dynamic Review tasks master stock management architecture schema tracking
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS review_pool (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -180,7 +180,7 @@ def check_and_release_expired_tasks():
             t_type = session['task_type']
             
             if t_type == 'REVIEW_TASK' and session['task_id_list']:
-                # Dynamic reset logic mapping for review timeouts
+                # Dynamic timeout release loop mapping for review stock pools
                 cursor.execute("UPDATE review_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ? AND status = 'LOCKED'", (int(session['task_id_list']),))
             elif session['task_id_list']:
                 ids = session['task_id_list'].split(',')
@@ -198,7 +198,7 @@ def check_and_release_expired_tasks():
     except Exception as e:
         print(f"Error in expiry checker: {e}")
 
-# 🚀 HIGH PERFORMANCE MEMORY-BASED NON-BLOCKING ASYNC BROADCAST MOTOR TRIPPERS
+# 🚀 HIGH PERFORMANCE MEMORY-BASED NON-BLOCKING ASYNC GMAIL STOCK BROADCASTER
 def broadcast_stock_worker(added_count, current_total):
     """Internal sub-thread loops logic mapped to isolate connections while executing large loops safely."""
     try:
@@ -207,31 +207,57 @@ def broadcast_stock_worker(added_count, current_total):
         conn.close()
         
         user_list = [row['user_id'] for row in user_rows]
-        
         alert_text = (
             "🔥 **FRESH GMAIL STOCK ADDED!** 🔥\n\n"
             f"📨 **Admin ne abhi naye {added_count} Gmail Tasks update kiye hain!**\n"
             f"📦 **Total Live Stock Available:** `{current_total}` Gmails\n\n"
             "💰 Jaldi aao, apna task claim karo aur unlimited earning shuru karo yrr! 🚀"
         )
-        
         count = 0
         for uid in user_list:
             try:
                 bot.send_message(chat_id=uid, text=alert_text, parse_mode="Markdown")
                 count += 1
-                if count % 20 == 0:
-                    time.sleep(1.0)
-                else:
-                    time.sleep(0.04)
-            except Exception:
-                continue
+                if count % 20 == 0: time.sleep(1.0)
+                else: time.sleep(0.04)
+            except Exception: continue
     except Exception as e:
         print(f"Background async stock alert processor failure handler logs: {e}")
 
 def auto_stock_broadcast_alert(added_count, current_total):
     """Fires up a non-interfering subthread mapping structural parameters instantly outside runtime tracks."""
     thr = threading.Thread(target=broadcast_stock_worker, args=(added_count, current_total))
+    thr.start()
+
+# 🌟 NEW UPGRADE: HIGH CAPACITY ASYNC ENGINE FOR REVIEW STOCK ALERT DISPATCH ROUTING
+def broadcast_review_worker(added_count, current_total):
+    """Launches an independent non-blocking loop to dispatch real-time review stock alerts globally."""
+    try:
+        conn = get_db_connection()
+        user_rows = conn.execute("SELECT user_id FROM users WHERE is_banned = 0").fetchall()
+        conn.close()
+        
+        user_list = [row['user_id'] for row in user_rows]
+        alert_text = (
+            "⭐ **🔥 FRESH REVIEW STOCK LOADED! 🔥** ⭐\n\n"
+            f"🚀 **Admin ne abhi naye {added_count} Rating & Review Tasks pool me add kiye hain!**\n"
+            f"📊 **Total Live Available Review Stock:** `{current_total}` Tasks\n\n"
+            "💰 Jaldi aao, simple review copy-paste karo aur dheron paise kamao direct profile wallet me! 💸⚡"
+        )
+        count = 0
+        for uid in user_list:
+            try:
+                bot.send_message(chat_id=uid, text=alert_text, parse_mode="Markdown")
+                count += 1
+                if count % 20 == 0: time.sleep(1.0)
+                else: time.sleep(0.04)
+            except Exception: continue
+    except Exception as e:
+        print(f"Background operational review thread notification failure log: {e}")
+
+def auto_review_broadcast_alert(added_count, current_total):
+    """Spawns an isolated sub-thread loop so admin panel operations respond instantly on command click."""
+    thr = threading.Thread(target=broadcast_review_worker, args=(added_count, current_total))
     thr.start()
 
 # ──────────────────────────────────────────────────────────────────────
@@ -267,13 +293,13 @@ def process_final_channel_proof(message, session_id):
         caption_text = f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n📋 **TASK TYPE:** `{task_label}`\n👤 **User ID:** `{user_id}`\n📦 **Assigned Items:** {ids_count} Gmail(s)\n\nAdmin select correct rate button from panel below to verify:"
         
     elif session['task_type'] == 'REVIEW_TASK':
-        # INTERFACE ADVANCEMENT INTEGRATION: Explicitly labels review proofs with dynamic session elements mapping pointers
+        # INTERFACE ADVANCEMENT SYNC: Maps fully customized structured review proofs directly into channels mapping arrays
         task_label = "⭐ [REVIEW TASK PROOF VALIDATION]"
         review_target_id = int(session['task_id_list'])
         admin_markup = types.InlineKeyboardMarkup()
         admin_markup.add(
-            types.InlineKeyboardButton("🟢 Approve Review", callback_data=f"rev_approve_{user_id}_{session_id}_{review_target_id}"),
-            types.InlineKeyboardButton("🔴 Reject Review", callback_data=f"rev_reject_{user_id}_{session_id}_{review_target_id}")
+            types.InlineKeyboardButton("🟢 Approve Review Task", callback_data=f"rev_approve_{user_id}_{session_id}_{review_target_id}"),
+            types.InlineKeyboardButton("🔴 Reject Review Task", callback_data=f"rev_reject_{user_id}_{session_id}_{review_target_id}")
         )
         caption_text = f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n📋 **TASK TYPE:** `{task_label}`\n👤 **User ID:** `{user_id}`\n🆔 **Review Stock ID:** `{review_target_id}`\n\n*Review Task Verification Core Panel Status Layer. Select structural action buttons beneath:* "
         
@@ -393,7 +419,7 @@ def start_cmd(message):
     )
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 8: CORE ADMIN CONTROLS & REVIEW POOL ARRAYS MAPPING
+# 🛰️ SECTION 8: CORE ADMIN CONTROLS & REVIEW STOCK ALLOCATION MANAGERS
 # ──────────────────────────────────────────────────────────────────────
 
 @bot.message_handler(commands=['ban'])
@@ -434,7 +460,7 @@ def admin_manual_unban(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ Error: {e}")
 
-# 🚀 REVIEW SYSTEM EXPANSION MANAGEMENT: Full dynamic pool allocation settings and array management maps
+# 🌟 REVIEW BROADCAST HOOKED INSERTS: Triggers automatic global notifications upon dynamic stock load command execution
 @bot.message_handler(commands=['addreview'])
 def admin_add_single_review_task(message):
     if message.from_user.id != ADMIN_ID: return
@@ -449,7 +475,11 @@ def admin_add_single_review_task(message):
         conn.commit()
         count = conn.execute("SELECT COUNT(*) as total FROM review_pool WHERE status = 'AVAILABLE'").fetchone()['total']
         conn.close()
-        bot.send_message(ADMIN_ID, f"✅ **Review Task Loaded Successfully!**\n📦 Total Available Reviews Stock: `{count}` items.")
+        
+        bot.send_message(ADMIN_ID, f"✅ **Single Review Task Loaded!**\n📦 Total Available Reviews: `{count}`\n📢 *Launching async dynamic user notifications loops...*")
+        
+        # Launches non-blocking thread execution for review alerts
+        auto_review_broadcast_alert(1, count)
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ Data Insertion Fail: {e}")
 
@@ -474,7 +504,11 @@ def admin_bulk_add_review_tasks(message):
         conn.commit()
         total_stock = conn.execute("SELECT COUNT(*) as total FROM review_pool WHERE status = 'AVAILABLE'").fetchone()['total']
         conn.close()
-        bot.send_message(ADMIN_ID, f"📦 **Bulk Review Import Status:**\n✅ Added: {success_count}\n🔥 Total Live Review Stock: {total_stock}")
+        
+        bot.send_message(ADMIN_ID, f"📦 **Bulk Review Import Status:**\n✅ Added Elements: {success_count}\n🔥 Total Live Review Stock: {total_stock}\n📢 *Launching background notification matrix engines...*")
+        
+        if success_count > 0:
+            auto_review_broadcast_alert(success_count, total_stock)
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ Bulk Add Review Error: {e}")
 
@@ -824,7 +858,7 @@ def handle_text_messages(message):
         content = res['value'] if res else "📹 **No Tutorial Set by Admin yet.**"
         bot.send_message(message.chat.id, content, parse_mode="Markdown")
         
-    # 🌟 CORE LOGIC MULTIPLEXING: Fetches uniquely allocated dynamic reviews directly from pool database arrays
+    # 🌟 POOL PIPELINE STRATIFICATION: Fetches uniquely allocated dynamic reviews directly from dynamic pool database arrays
     elif message.text == "⭐ Review Task":
         conn = get_db_connection()
         
