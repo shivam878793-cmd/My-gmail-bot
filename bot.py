@@ -81,6 +81,11 @@ def init_db():
     # Static master parameter initialization
     cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('tutorial', '📹 **Help & Tutorial Video:**\\n\\n[No video link set yet by admin. Use /sethelp to update]')")
     
+    # ADVANCED FEATURE HOOK: Dynamic review configuration master elements storage settings initialization
+    cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('review_link', 'https://google.com')")
+    cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('review_msg', 'Admin ne abhi koi detailed message set nahi kiya hai. Apni achhi rating de kar screenshot bhej dein!')")
+    cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('review_reward', '5.0')")
+    
     conn.commit()
     conn.close()
 
@@ -164,14 +169,14 @@ def check_and_release_expired_tasks():
         for session in expired_sessions:
             sid = session['id']
             uid = session['user_id']
-            if session['task_id_list']:
+            if session['task_id_list'] and session['task_type'] != 'REVIEW_TASK':
                 ids = session['task_id_list'].split(',')
                 for t_id in ids:
                     cursor.execute("UPDATE task_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ? AND status = 'LOCKED'", (int(t_id),))
             
             cursor.execute("DELETE FROM sessions WHERE id = ?", (sid,))
             try:
-                bot.send_message(uid, "⏰ **TIME OUT ALERT!**\n\n⚠️ Aapne **60 minute (1 ghanta)** ke andar task poora karke submit nahi kiya.\n❌ Isliye aapka task automatically **Cancel** karke wapas stock pool me bhej diya gaya hai!")
+                bot.send_message(uid, "⏰ **TIME OUT ALERT!**\n\n⚠️ Aapne **60 minute (1 ghanta)** ke andar task poora karke submit nahi kiya.\n❌ Isliye aapka task automatically **Cancel** karke system se remove kar diya gaya hai!")
             except:
                 pass
                 
@@ -237,25 +242,43 @@ def process_final_channel_proof(message, session_id):
         bot.send_message(message.chat.id, "❌ **SESSION ERROR!** Task record expired or invalid.")
         return
         
-    ids_count = len(session['task_id_list'].split(','))
-    
-    # Dynamic label mapping parameters
+    # Dynamic text labels mapping setup configurations based on session task identifiers
     if session['task_type'] == 'BATCH_ROW':
         task_label = "📦 [10x BULK MODE TASK PROOF]"
+        ids_count = len(session['task_id_list'].split(','))
+        admin_markup = types.InlineKeyboardMarkup()
+        admin_markup.add(
+            types.InlineKeyboardButton("🟢 Approve at ₹15/ea", callback_data=f"adm_rate15_{user_id}_{session_id}_{ids_count}"),
+            types.InlineKeyboardButton("🟡 Approve at ₹20/ea", callback_data=f"adm_rate20_{user_id}_{session_id}_{ids_count}"),
+            types.InlineKeyboardButton("🔴 Reject & Delete", callback_data=f"adm_rej_{user_id}_{session_id}_0")
+        )
+        caption_text = f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n📋 **TASK TYPE:** `{task_label}`\n👤 **User ID:** `{user_id}`\n📦 **Assigned Items:** {ids_count} Gmail(s)\n\nAdmin select correct rate button from panel below to verify:"
+        
+    elif session['task_type'] == 'REVIEW_TASK':
+        # INTERFACE ADVANCEMENT INTEGRATION: Explicitly maps high capability review layouts inside validation channels
+        task_label = "⭐ [REVIEW TASK PROOF VALIDATION]"
+        admin_markup = types.InlineKeyboardMarkup()
+        admin_markup.add(
+            types.InlineKeyboardButton("🟢 Approve Review Task", callback_data=f"rev_approve_{user_id}_{session_id}"),
+            types.InlineKeyboardButton("🔴 Reject Review Task", callback_data=f"rev_reject_{user_id}_{session_id}")
+        )
+        caption_text = f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n📋 **TASK TYPE:** `{task_label}`\n👤 **User ID:** `{user_id}`\n\n*Review Task Verification Core Panel Status Layer. Select structural action buttons beneath:* "
+        
     else:
         task_label = "📨 [SINGLE MODE TASK PROOF]"
-    
-    admin_markup = types.InlineKeyboardMarkup()
-    admin_markup.add(
-        types.InlineKeyboardButton("🟢 Approve at ₹15/Gmail", callback_data=f"adm_rate15_{user_id}_{session_id}_{ids_count}"),
-        types.InlineKeyboardButton("🟡 Approve at ₹20/Gmail", callback_data=f"adm_rate20_{user_id}_{session_id}_{ids_count}"),
-        types.InlineKeyboardButton("🔴 Reject & Delete", callback_data=f"adm_rej_{user_id}_{session_id}_0")
-    )
-    
+        ids_count = len(session['task_id_list'].split(','))
+        admin_markup = types.InlineKeyboardMarkup()
+        admin_markup.add(
+            types.InlineKeyboardButton("🟢 Approve at ₹15/Gmail", callback_data=f"adm_rate15_{user_id}_{session_id}_{ids_count}"),
+            types.InlineKeyboardButton("🟡 Approve at ₹20/Gmail", callback_data=f"adm_rate20_{user_id}_{session_id}_{ids_count}"),
+            types.InlineKeyboardButton("🔴 Reject & Delete", callback_data=f"adm_rej_{user_id}_{session_id}_0")
+        )
+        caption_text = f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n📋 **TASK TYPE:** `{task_label}`\n👤 **User ID:** `{user_id}`\n📦 **Assigned Items:** {ids_count} Gmail(s)\n\nAdmin select correct rate button from panel below to verify:"
+
     bot.send_photo(
         GMAIL_CHANNEL_ID,
         file_id,
-        caption=f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n📋 **TASK TYPE:** `{task_label}`\n👤 **User ID:** `{user_id}`\n📦 **Assigned Items:** {ids_count} Gmail(s)\n\nAdmin select correct rate button from panel below to verify:",
+        caption=caption_text,
         reply_markup=admin_markup,
         parse_mode="Markdown"
     )
@@ -288,18 +311,19 @@ def catch_global_photo_proofs(message):
         bot.send_message(message.chat.id, "❌ **SUBMISSION DENIED!**\n\nAapka koi bhi active locked task background pool me nahi mila. Pehle task uthayein!")
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 6: INTERFACE GRAPHICS & LAYOUT KEYBOARDS MAPS
+# 🛰️ SECTION 6: INTERFACE GRAPHICS & LAYOUT KEYBOARDS MAPS (19726.jpg UPDATED)
 # ──────────────────────────────────────────────────────────────────────
 
 def main_menu():
     """Generates the absolute standard master grid mapping required fields directly inside the device frame matrix."""
+    # ADVANCED MODIFICATION LAYER: Contact button completely substituted with functional review matrices
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     btn1 = types.KeyboardButton("📨 Get Gmail Task")
     btn2 = types.KeyboardButton("💰 Wallet")
     btn3 = types.KeyboardButton("👥 Invite & Earn")
     btn4 = types.KeyboardButton("💸 Withdraw")
     btn5 = types.KeyboardButton("📚 Help & Tutorial")
-    btn6 = types.KeyboardButton("☎️ Contact Owner & Help") 
+    btn6 = types.KeyboardButton("⭐ Review Task") 
     
     markup.add(btn1)
     markup.add(btn2, btn3)
@@ -397,6 +421,56 @@ def admin_manual_unban(message):
         except: pass
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ Error: {e}")
+
+# 🚀 SYSTEM MANAGEMENT EXPANSIONS: Dynamic Review Task parameter adjustments configuration arrays setup
+@bot.message_handler(commands=['setreviewlink'])
+def admin_set_review_url_path(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        raw_url = message.text.replace("/setreviewlink", "").strip()
+        if not raw_url:
+            bot.send_message(ADMIN_ID, "❌ **Sahi Format:** `/setreviewlink <link coordinated routing text>`")
+            return
+        conn = get_db_connection()
+        conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('review_link', ?)", (raw_url,))
+        conn.commit()
+        conn.close()
+        bot.send_message(ADMIN_ID, f"✅ **Review Link Updated In Database Successfully!**\n🔗 Current Path: {raw_url}")
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ Data Injection Fail: {e}")
+
+@bot.message_handler(commands=['setreviewmsg'])
+def admin_set_review_message_text(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        raw_msg = message.text.replace("/setreviewmsg", "").strip()
+        if not raw_msg:
+            bot.send_message(ADMIN_ID, "❌ **Sahi Format:** `/setreviewmsg <write full instructions details here>`")
+            return
+        conn = get_db_connection()
+        conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('review_msg', ?)", (raw_msg,))
+        conn.commit()
+        conn.close()
+        bot.send_message(ADMIN_ID, "✅ **Review Text Instructions Strings Synced In Core Datastore Stack!**")
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ Data Injection Fail: {e}")
+
+@bot.message_handler(commands=['setreviewreward'])
+def admin_set_review_payout_amount(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        raw_amt = message.text.replace("/setreviewreward", "").strip()
+        if not raw_amt:
+            bot.send_message(ADMIN_ID, "❌ **Sahi Format:** `/setreviewreward <numerical float digits>`")
+            return
+        reward_float = float(raw_amt)
+        conn = get_db_connection()
+        conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('review_reward', ?)", (str(reward_float),))
+        conn.commit()
+        conn.close()
+        bot.send_message(ADMIN_ID, f"✅ **Review Task Base Payout Updated!**\n💰 Reward Amount: ₹{reward_float} balance point.")
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ Data Type Conversion Error: {e}")
 
 @bot.message_handler(commands=['addbalance'])
 def admin_add_balance(message):
@@ -687,15 +761,38 @@ def handle_text_messages(message):
         content = res['value'] if res else "📹 **No Tutorial Set by Admin yet.**"
         bot.send_message(message.chat.id, content, parse_mode="Markdown")
         
-    elif message.text == "☎️ Contact Owner & Help":
-        markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton("📨 Click Here to Chat with Owner", url="https://t.me/Raka_01"))
-        bot.send_message(
-            message.chat.id, 
-            "☎️ **CONTACT SUPPORT CENTRE** ☎️\n\n💬 Agar aapko payment, task ya bot me koi bhi problem aa rahi hai, toh aap direct owner se bat kar sakte hain.\n\n👇 **Direct owner (@Raka_01) se chat karne ke liye niche button par click karein:**", 
-            reply_markup=markup, 
-            parse_mode="Markdown"
+    # 🌟 CORE ENGINE UPGRADE: Interactive interface configurations mapping dynamic review workflows
+    elif message.text == "⭐ Review Task":
+        conn = get_db_connection()
+        r_link = conn.execute("SELECT value FROM settings WHERE key = 'review_link'").fetchone()['value']
+        r_msg = conn.execute("SELECT value FROM settings WHERE key = 'review_msg'").fetchone()['value']
+        r_reward = conn.execute("SELECT value FROM settings WHERE key = 'review_reward'").fetchone()['value']
+        conn.close()
+        
+        current_time = int(time.time())
+        conn = get_db_connection()
+        # Creates a programmatic active review tracing identifier safely inside data layout rows
+        cursor = conn.execute("INSERT INTO sessions (user_id, task_type, task_id_list, started_at) VALUES (?, 'REVIEW_TASK', 'REVIEW_SYSTEM', ?)", (user_id, current_time))
+        sid = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        
+        review_dashboard_text = (
+            "⭐ **DYNAMIC RATING & REVIEW TASK** ⭐\n\n"
+            f"💰 **Task Reward Earning:** `₹{r_reward} Cash Balance` (Direct Wallet)\n"
+            "───────────────────\n"
+            f"🔗 **Review Link Map Path:**\n{r_link}\n\n"
+            f"📝 **Review Text Requirements (Copy it):**\n`{r_msg}`\n\n"
+            "───────────────────\n"
+            "⚠️ **Instructions:** Upar diye gaye link par jaakar text paste karke dynamic review karein, aur uske baad niche diye button se apna screenshot proof file submit karein yrr!"
         )
+        
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        markup.add(
+            types.InlineKeyboardButton("✅ Done (Submit Proof)", callback_data=f"done_{sid}"),
+            types.InlineKeyboardButton("❌ Cancel Task", callback_data=f"cancel_{sid}")
+        )
+        bot.send_message(message.chat.id, review_dashboard_text, parse_mode="Markdown", reply_markup=markup)
 
 # ──────────────────────────────────────────────────────────────────────
 # 🛰️ SECTION 10: TRANSACTIONS & WITHDRAWAL LOGIC FLOWS
@@ -783,6 +880,30 @@ def handle_callbacks(call):
         bot.answer_callback_query(call.id, "❌ Access Blocked! Pehle channels join verify karein.", show_alert=True)
         return
 
+    # REVIEW TASK APPROVAL CORE: Handles dynamic balance updates upon valid screenshot approval selections
+    if call.data.startswith("rev_"):
+        if user_id != ADMIN_ID: return
+        parts = call.data.split("_")
+        action, target_user, session_id = parts[1], int(parts[2]), int(parts[3])
+        
+        conn = get_db_connection()
+        if action == "approve":
+            r_reward = float(conn.execute("SELECT value FROM settings WHERE key = 'review_reward'").fetchone()['value'])
+            conn.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (r_reward, target_user))
+            conn.execute("UPDATE sessions SET status = 'APPROVED' WHERE id = ?", (session_id,))
+            conn.commit()
+            bot.edit_message_caption(f"🟢 **Review Task Approved! Paid ₹{r_reward} to User direct wallet.**", chat_id, call.message.message_id)
+            try: bot.send_message(target_user, f"🎉 **REVIEW TASK APPROVED!**\n\nAdmin ne aapka rating verification proof accept kar liya hai!\n💰 **🔥 ₹{r_reward} Balance** aapke account profile wallet me successfully add ho chuka hai!")
+            except: pass
+        elif action == "reject":
+            conn.execute("UPDATE sessions SET status = 'REJECTED' WHERE id = ?", (session_id,))
+            conn.commit()
+            bot.edit_message_caption("🔴 **Review Task Rejected & Destroyed from validation records.**", chat_id, call.message.message_id)
+            try: bot.send_message(target_user, "❌ **Aapka Review Task proof reject ho gaya hai. Kripya sahi criteria instructions padh kar dubara try karein.**")
+            except: pass
+        conn.close()
+        return
+
     if call.data.startswith('wd_'):
         if user_id != ADMIN_ID: return
         parts = call.data.split('_')
@@ -867,13 +988,10 @@ def handle_callbacks(call):
         )
         bot.send_message(chat_id, task_msg, parse_mode="Markdown", reply_markup=markup)
 
-    # 📦 HIGH CAPACITY 10x BULK TASK MATRIX CONTROLLER (5x SUBMISSION RUNNING LOCK PROTECTION - UNLOCKED PRE-APPROVAL)
     elif call.data == "task_batch":
-        # ⚙️ LOGIC REPAIR TRACK: Count calculations mapped directly to historical pending/running records arrays
         submitted_rows = conn.execute("SELECT COUNT(*) as total FROM sessions WHERE user_id = ? AND task_type = 'SINGLE'", (user_id,)).fetchone()
         current_submissions = submitted_rows['total'] if submitted_rows else 0
         
-        # 🔒 PRE-APPROVAL LAYER ACTIVE: Unlocks bulk entry dynamically when 5 single screenshots are sent
         if current_submissions < 5:
             bot.answer_callback_query(
                 call.id, 
@@ -914,59 +1032,53 @@ def handle_callbacks(call):
         session = conn.execute("SELECT * FROM sessions WHERE id = ?", (sid,)).fetchone()
         
         if session:
-            ids = session['task_id_list'].split(',')
-            for t_id in ids:
-                conn.execute("UPDATE task_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ?", (int(t_id),))
+            if session['task_type'] != 'REVIEW_TASK':
+                ids = session['task_id_list'].split(',')
+                for t_id in ids:
+                    conn.execute("UPDATE task_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ?", (int(t_id),))
+            
             conn.execute("DELETE FROM sessions WHERE id = ?", (sid,))
             
-            # 🛡️ ANTI-SPAM AUTO-BAN COUNTER TRACK MATRIX ENGINE
-            conn.execute("UPDATE users SET cancel_count = cancel_count + 1 WHERE user_id = ?", (user_id,))
-            conn.commit()
-            
-            # Re-fetch structural values to determine critical status limits
-            u_update = conn.execute("SELECT cancel_count FROM users WHERE user_id = ?", (user_id,)).fetchone()
-            
-            if u_update and u_update['cancel_count'] > 3:
-                # Triggers immediate isolated lock status flag
-                conn.execute("UPDATE users SET is_banned = 1 WHERE user_id = ?", (user_id,))
+            # Anti-spam automated ban processing conditions mappings initialization
+            if session['task_type'] != 'REVIEW_TASK':
+                conn.execute("UPDATE users SET cancel_count = cancel_count + 1 WHERE user_id = ?", (user_id,))
                 conn.commit()
+                u_update = conn.execute("SELECT cancel_count FROM users WHERE user_id = ?", (user_id,)).fetchone()
                 
-                # Close the connection BEFORE firing async notifications to release main thread lock variables
-                conn.close()
-                
-                # Despatches real-time security threats data to owner frame
-                u_info = call.from_user
-                ban_alert_msg = (
-                    f"🚨 **SECURITY ALERT: ANTI-SPAM AUTO BAN** 🚨\n\n"
-                    f"👤 **User Name:** {u_info.first_name} {u_info.last_name if u_info.last_name else ''}\n"
-                    f"🆔 **User ID:** `{user_id}`\n"
-                    f"📛 **Username:** @{u_info.username if u_info.username else 'N/A'}\n"
-                    f"⚠️ **Total Cancel Movements:** {u_update['cancel_count']} times\n"
-                    f"───────────────────\n"
-                    f"🚫 *Bande ne baar-baar stock cancel karke limit cross kar di thi, isliye bot ne use AUTOMATICALLY BAN kar diya hai!*"
-                )
-                
-                # ⚙️ HIGH-SECURITY DIRECT THREAD DISPATCH MAPS: Bypasses callback state to prevent freeze/skips
-                def send_ban_alert_async():
-                    try:
-                        bot.send_message(chat_id=ADMIN_ID, text=ban_alert_msg, parse_mode="Markdown")
-                    except Exception as thread_ex:
-                        print(f"Panic logging on isolated alert thread context: {thread_ex}")
-                
-                threading.Thread(target=send_ban_alert_async).start()
-                
-                try:
-                    bot.edit_message_text("❌ **Aapka account baar-baar task cancel karne ke karan BAN kar diya gaya hai!**", chat_id, call.message.message_id)
-                except:
-                    pass
-                return
+                if u_update and u_update['cancel_count'] > 3:
+                    conn.execute("UPDATE users SET is_banned = 1 WHERE user_id = ?", (user_id,))
+                    conn.commit()
+                    conn.close()
+                    
+                    u_info = call.from_user
+                    ban_alert_msg = (
+                        f"🚨 **SECURITY ALERT: ANTI-SPAM AUTO BAN** 🚨\n\n"
+                        f"👤 **User Name:** {u_info.first_name} {u_info.last_name if u_info.last_name else ''}\n"
+                        f"🆔 **User ID:** `{user_id}`\n"
+                        f"📛 **Username:** @{u_info.username if u_info.username else 'N/A'}\n"
+                        f"⚠️ **Total Cancel Movements:** {u_update['cancel_count']} times\n"
+                        f"───────────────────\n"
+                        f"🚫 *Bande ne baar-baar stock cancel karke limit cross kar di thi, isliye bot ne use AUTOMATICALLY BAN kar diya hai!*"
+                    )
+                    
+                    def send_ban_alert_async():
+                        try: bot.send_message(chat_id=ADMIN_ID, text=ban_alert_msg, parse_mode="Markdown")
+                        except Exception as thread_ex: print(f"Panic alert logs thread error: {thread_ex}")
+                    
+                    threading.Thread(target=send_ban_alert_async).start()
+                    
+                    try: bot.edit_message_text("❌ **Aapka account baar-baar task cancel karne ke karan BAN kar diya gaya hai!**", chat_id, call.message.message_id)
+                    except: pass
+                    return
+            else:
+                conn.commit()
 
-        bot.edit_message_text("❌ **Task Cancelled!** Item wapas stock pool me load ho gaya hai.", chat_id, call.message.message_id)
+        bot.edit_message_text("❌ **Task Cancelled!** Item wapas stock pool me load ya clear ho gaya hai.", chat_id, call.message.message_id)
         conn.close()
 
     elif call.data.startswith("done_"):
         sid = int(call.data.split('_')[1])
-        msg = bot.send_message(chat_id, "📸 **PROOF SUBMISSION CENTRE**\n\nAapne jo gmail abhi successfully create kiya hai, uska clear image screenshot proof send karein:")
+        msg = bot.send_message(chat_id, "📸 **PROOF SUBMISSION CENTRE**\n\nAapne jo task abhi successfully kiya hai, uska clear image screenshot proof send karein:")
         bot.register_next_step_handler(msg, process_final_channel_proof, sid)
         conn.close()
 
