@@ -43,7 +43,9 @@ def init_db():
             user_id INTEGER PRIMARY KEY,
             balance REAL DEFAULT 0.0,
             referred_by INTEGER,
-            completed_single_tasks INTEGER DEFAULT 0
+            completed_single_tasks INTEGER DEFAULT 0,
+            cancel_count INTEGER DEFAULT 0,
+            is_banned INTEGER DEFAULT 0
         )
     ''')
     
@@ -95,6 +97,14 @@ def is_user_joined_all(user_id):
     """Intercepts and performs strict validation routines against the external channels infrastructure."""
     if user_id == ADMIN_ID:
         return True
+    
+    # BAN CONTROLLER INTERCEPT LAYER
+    conn = get_db_connection()
+    u_chk = conn.execute("SELECT is_banned FROM users WHERE user_id = ?", (user_id,)).fetchone()
+    conn.close()
+    if u_chk and u_chk['is_banned'] == 1:
+        return False
+        
     for channel in REQUIRED_CHANNELS:
         try:
             member = bot.get_chat_member(channel, user_id)
@@ -145,7 +155,7 @@ def check_and_release_expired_tasks():
         cursor = conn.cursor()
         current_time = int(time.time())
         
-        # ⚙️ CONFIGURATION CHANGE TRACK: Timer badhakar 60 minute (3600 seconds) kiya gaya hai
+        # Timer mapped to 60 minutes structural track intervals
         expiry_limit = current_time - 3600
         
         cursor.execute("SELECT id, user_id, task_id_list FROM sessions WHERE started_at < ? AND status = 'PENDING'", (expiry_limit,))
@@ -175,7 +185,7 @@ def broadcast_stock_worker(added_count, current_total):
     """Internal sub-thread loops logic mapped to isolate connections while executing large loops safely."""
     try:
         conn = get_db_connection()
-        user_rows = conn.execute("SELECT user_id FROM users").fetchall()
+        user_rows = conn.execute("SELECT user_id FROM users WHERE is_banned = 0").fetchall()
         conn.close()
         
         user_list = [row['user_id'] for row in user_rows]
@@ -207,7 +217,7 @@ def auto_stock_broadcast_alert(added_count, current_total):
     thr.start()
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 5: HIGH-DENSITY PHOTO INTERCEPTOR SYSTEM (19649.jpg CRITICAL REPAIR)
+# 🛰️ SECTION 5: HIGH-DENSITY PHOTO INTERCEPTOR SYSTEM (19649.jpg RESOLVED)
 # ──────────────────────────────────────────────────────────────────────
 
 def process_final_channel_proof(message, session_id):
@@ -229,7 +239,6 @@ def process_final_channel_proof(message, session_id):
         
     ids_count = len(session['task_id_list'].split(','))
     
-    # Dynamic label mapping parameters
     if session['task_type'] == 'BATCH_ROW':
         task_label = "📦 [10x BULK MODE TASK PROOF]"
     else:
@@ -255,6 +264,15 @@ def process_final_channel_proof(message, session_id):
 def catch_global_photo_proofs(message):
     """Intercepts photo packets immediately to avoid collision with standard text handler loops."""
     user_id = message.from_user.id
+    
+    # Check ban status
+    conn = get_db_connection()
+    u_chk = conn.execute("SELECT is_banned FROM users WHERE user_id = ?", (user_id,)).fetchone()
+    conn.close()
+    if u_chk and u_chk['is_banned'] == 1:
+        bot.send_message(message.chat.id, "❌ **Aapka account is bot me Banned hai!**")
+        return
+
     if not is_user_joined_all(user_id):
         bot.send_message(message.chat.id, "❌ Channels verification missing!")
         return
@@ -305,6 +323,15 @@ def task_options_menu():
 def start_cmd(message):
     """Processes entry checkpoints and handles user profile setups."""
     user_id = message.from_user.id
+    
+    # Anti-ban intercept check
+    conn = get_db_connection()
+    u_chk = conn.execute("SELECT is_banned FROM users WHERE user_id = ?", (user_id,)).fetchone()
+    conn.close()
+    if u_chk and u_chk['is_banned'] == 1:
+        bot.send_message(message.chat.id, "❌ **Aapka account admin dwara permanently block/ban kar diya gaya hai.**")
+        return
+        
     text = message.text.split()
     referrer_id = None
     if len(text) > 1 and text[1].isdigit():
@@ -329,8 +356,46 @@ def start_cmd(message):
     )
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 8: CORE ADMIN CONTROLS & MANAGEMENT SUBSYSTEMS
+# 🛰️ SECTION 8: CORE ADMIN CONTROLS & SECURITY MASTER ARRAYS
 # ──────────────────────────────────────────────────────────────────────
+
+@bot.message_handler(commands=['ban'])
+def admin_manual_ban(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        parts = message.text.split()
+        if len(parts) < 2 or not parts[1].isdigit():
+            bot.send_message(ADMIN_ID, "❌ **Format:** `/ban USER_ID`")
+            return
+        target_uid = int(parts[1])
+        conn = get_db_connection()
+        conn.execute("UPDATE users SET is_banned = 1 WHERE user_id = ?", (target_uid,))
+        conn.commit()
+        conn.close()
+        bot.send_message(ADMIN_ID, f"🚫 **User `{target_uid}` has been Banned successfully!**")
+        try: bot.send_message(target_uid, "❌ **Aapko admin ne bot se ban kar diya hai.**")
+        except: pass
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ Error: {e}")
+
+@bot.message_handler(commands=['unban'])
+def admin_manual_unban(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        parts = message.text.split()
+        if len(parts) < 2 or not parts[1].isdigit():
+            bot.send_message(ADMIN_ID, "❌ **Format:** `/unban USER_ID`")
+            return
+        target_uid = int(parts[1])
+        conn = get_db_connection()
+        conn.execute("UPDATE users SET is_banned = 0, cancel_count = 0 WHERE user_id = ?", (target_uid,))
+        conn.commit()
+        conn.close()
+        bot.send_message(ADMIN_ID, f"🟢 **User `{target_uid}` has been Unbanned successfully!**")
+        try: bot.send_message(target_uid, f"🎉 **Aapka account unban ho gaya hai!**", reply_markup=main_menu())
+        except: pass
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ Error: {e}")
 
 @bot.message_handler(commands=['addbalance'])
 def admin_add_balance(message):
@@ -495,7 +560,7 @@ def admin_broadcast_flexible(message):
         return
     try:
         conn = get_db_connection()
-        users = conn.execute("SELECT user_id FROM users").fetchall()
+        users = conn.execute("SELECT user_id FROM users WHERE is_banned = 0").fetchall()
         conn.close()
         
         count = 0
@@ -540,18 +605,26 @@ def admin_check_user(message):
         user = conn.execute("SELECT * FROM users WHERE user_id = ?", (target_uid,)).fetchone()
         conn.close()
         if user:
-            bot.send_message(ADMIN_ID, f"🔍 **User Info:**\n👤 ID: `{target_uid}`\n💰 Balance: ₹{user['balance']}\n✅ Completed: {user['completed_single_tasks']}")
+            bot.send_message(ADMIN_ID, f"🔍 **User Info:**\n👤 ID: `{target_uid}`\n💰 Balance: ₹{user['balance']}\n✅ Completed: {user['completed_single_tasks']}\n⚠️ Cancel Rows: {user['cancel_count']}\n🚫 Ban Status: {user['is_banned']}")
     except Exception as e: pass
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 9: TEXT LOGIC CONTROLLER AND RESOLUTION ROUTERS
+# 🛰 *SECTION 9: TEXT LOGIC CONTROLLER AND RESOLUTION ROUTERS*
 # ──────────────────────────────────────────────────────────────────────
 
 @bot.message_handler(func=lambda msg: True, content_types=['text'])
 def handle_text_messages(message):
     """Monitors standard dashboard entry operations and guides processing flow seamlessly."""
-    check_and_release_expired_tasks()
     user_id = message.from_user.id
+    
+    # Anti-ban security gate intercept mapping
+    conn = get_db_connection()
+    u_chk = conn.execute("SELECT is_banned FROM users WHERE user_id = ?", (user_id,)).fetchone()
+    conn.close()
+    if u_chk and u_chk['is_banned'] == 1:
+        return
+
+    check_and_release_expired_tasks()
     register_user(user_id)
     
     # Global verification status check layer
@@ -664,10 +737,10 @@ def process_withdrawal_admin_review(message, amount):
     success_text = f"✅ **\"Withdrawal Request Submitted!\"**\n\n💰 **\"Amount:\"** ₹{amount}\n📱 **\"UPI ID:\"** {upi_id}\n\n⚠️ **\"Payment Under 24 Hours\"**"
     bot.send_message(message.chat.id, success_text, parse_mode="Markdown")
     
-    bot.send_message(WITHDRAW_CHANNEL_ID, f"🚨 **NEW WITHDRAWAL PENDING** 🚨\n\n👤 **User ID:** `{user_id}`\n💵 **Amount Deducated:** ₹{amount}\n📱 **UPI ID:** `{upi_id}`\n\nSelect action from panel:", parse_mode="Markdown", reply_markup=wd_markup)
+    bot.send_message(WITHDRAW_CHANNEL_ID, f"🚨 **NEW WITHDRAWAL PENDING** 🚨\n\n👤 **User ID:** `{user_id}`\n💵 **Amount Deducted:** ₹{amount}\n📱 **UPI ID:** `{upi_id}`\n\nSelect action from panel:", parse_mode="Markdown", reply_markup=wd_markup)
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 11: ASYNCHRONOUS CALLBACK CONTROLLERS
+# 🛰 *SECTION 11: ASYNCHRONOUS CALLBACK CONTROLLERS (LOCK & SPAM ENGINE)*
 # ──────────────────────────────────────────────────────────────────────
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -677,7 +750,13 @@ def handle_callbacks(call):
     user_id = call.from_user.id
     chat_id = call.message.chat.id
     
-    # New user join channel identifier alerts hook
+    # Anti-ban security loop intercept
+    conn = get_db_connection()
+    u_chk = conn.execute("SELECT is_banned FROM users WHERE user_id = ?", (user_id,)).fetchone()
+    conn.close()
+    if u_chk and u_chk['is_banned'] == 1:
+        return
+
     if call.data == "verify_channels":
         if is_user_joined_all(user_id):
             try: bot.delete_message(chat_id, call.message.message_id)
@@ -696,7 +775,7 @@ def handle_callbacks(call):
             try: bot.send_message(ADMIN_ID, alert_msg, parse_mode="Markdown")
             except: pass
         else:
-            bot.answer_callback_query(call.id, "❌ Verification failed! Please check agar aapne saare channels join kiye hain.", show_alert=True)
+            bot.answer_callback_query(call.id, "❌ Verification failed! Please check channels.", show_alert=True)
         return
 
     if not is_user_joined_all(user_id) and call.data != "verify_channels":
@@ -775,7 +854,6 @@ def handle_callbacks(call):
         conn.commit()
         conn.close()
         
-        # Single mode custom operation dynamic keyboard actions setup mapped cleanly
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("✅ Done & Submit Proof", callback_data=f"done_{sid}"),
                    types.InlineKeyboardButton("❌ Cancel Task", callback_data=f"cancel_{sid}"))
@@ -788,8 +866,21 @@ def handle_callbacks(call):
         )
         bot.send_message(chat_id, task_msg, parse_mode="Markdown", reply_markup=markup)
 
-    # 📦 HIGH CAPACITY 10x BULK TASK MATRIX CONTROLLER (LOCK SYSTEMS REMOVED COMPLETELY)
+    # 📦 HIGH CAPACITY 10x BULK TASK MATRIX CONTROLLER (5x COMPLETION LOCK PROTECTION ENGAGED)
     elif call.data == "task_batch":
+        u_data = conn.execute("SELECT completed_single_tasks FROM users WHERE user_id = ?", (user_id,)).fetchone()
+        
+        # 🔒 LOCK VERIFICATION LOGIC: Requires exactly 5 completed items to enter bulk space
+        if not u_data or u_data['completed_single_tasks'] < 5:
+            current_done = u_data['completed_single_tasks'] if u_data else 0
+            bot.answer_callback_query(
+                call.id, 
+                f"🔒 Locked System! Pehle Single mode se kam se kam 5 Gmail complete karo yrr. (Aapka Current Done: {current_done}/5)", 
+                show_alert=True
+            )
+            conn.close()
+            return
+
         tasks = conn.execute("SELECT * FROM task_pool WHERE status = 'AVAILABLE' LIMIT 10").fetchall()
         if len(tasks) < 10:
             bot.answer_callback_query(call.id, f"😢 Bulk stock low hai! Sirf {len(tasks)} items live hain.", show_alert=True)
@@ -797,8 +888,6 @@ def handle_callbacks(call):
             return
             
         current_time = int(time.time())
-        
-        # Header block notification layout
         bot.send_message(chat_id, "📦 **10x BULK MODE TASK DASHBOARD** 📦\n\nNiche diye gaye saare accounts line se setup karein. Har Gmail ke niche uska independent submit button diya gaya hai:\n───────────────────")
         
         for index, t in enumerate(tasks, 1):
@@ -806,7 +895,6 @@ def handle_callbacks(call):
             cursor = conn.execute("INSERT INTO sessions (user_id, task_type, task_id_list, started_at) VALUES (?, 'BATCH_ROW', ?, ?)", (user_id, str(t['id']), current_time))
             row_sid = cursor.lastrowid
             
-            # CALLBACK MAPPING AS PER SCREENSHOT 19648.jpg
             row_markup = types.InlineKeyboardMarkup(row_width=2)
             row_markup.add(
                 types.InlineKeyboardButton("✅ Done (Submit Proof)", callback_data=f"done_{row_sid}"),
@@ -822,18 +910,48 @@ def handle_callbacks(call):
     elif call.data.startswith("cancel_"):
         sid = int(call.data.split('_')[1])
         session = conn.execute("SELECT * FROM sessions WHERE id = ?", (sid,)).fetchone()
+        
         if session:
             ids = session['task_id_list'].split(',')
             for t_id in ids:
                 conn.execute("UPDATE task_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ?", (int(t_id),))
             conn.execute("DELETE FROM sessions WHERE id = ?", (sid,))
+            
+            # 🛡️ ANTI-SPAM AUTO-BAN COUNTER TRACK MATRIX ENGINE
+            conn.execute("UPDATE users SET cancel_count = cancel_count + 1 WHERE user_id = ?", (user_id,))
             conn.commit()
-        bot.edit_message_text("❌ **Task Cancelled Successfully!** Item wapas stock pool me load ho gaya hai.", chat_id, call.message.message_id)
+            
+            # Re-fetch structural values to determine critical status limits
+            u_update = conn.execute("SELECT cancel_count FROM users WHERE user_id = ?", (user_id,)).fetchone()
+            
+            if u_update and u_update['cancel_count'] > 3:
+                # Triggers immediate isolated lock status flag
+                conn.execute("UPDATE users SET is_banned = 1 WHERE user_id = ?", (user_id,))
+                conn.commit()
+                
+                # Despatches real-time security threats data to owner frame
+                u_info = call.from_user
+                ban_alert_msg = (
+                    f"🚨 **SECURITY ALERT: ANTI-SPAM AUTO BAN** 🚨\n\n"
+                    f"👤 **User Name:** {u_info.first_name}\n"
+                    f"🆔 **User ID:** `{user_id}`\n"
+                    f"📛 **Username:** @{u_info.username if u_info.username else 'N/A'}\n"
+                    f"⚠️ **Total Cancel Movements:** {u_update['cancel_count']} times\n"
+                    f"───────────────────\n"
+                    f"🚫 *Bande ne baar-baar stock cancel karke limit cross kar di thi, isliye bot ne use AUTOMATICALLY BAN kar diya hai!*"
+                )
+                try: bot.send_message(ADMIN_ID, ban_alert_msg, parse_mode="Markdown")
+                except: pass
+                
+                bot.edit_message_text("❌ **Aapka account baar-baar task cancel karne ke karan BAN kar diya gaya hai!**", chat_id, call.message.message_id)
+                conn.close()
+                return
+
+        bot.edit_message_text("❌ **Task Cancelled!** Item wapas stock pool me load ho gaya hai.", chat_id, call.message.message_id)
         conn.close()
 
     elif call.data.startswith("done_"):
         sid = int(call.data.split('_')[1])
-        # Step handler session registration setup cleanly mapped
         msg = bot.send_message(chat_id, "📸 **PROOF SUBMISSION CENTRE**\n\nAapne jo gmail abhi successfully create kiya hai, uska clear image screenshot proof send karein:")
         bot.register_next_step_handler(msg, process_final_channel_proof, sid)
         conn.close()
@@ -842,5 +960,5 @@ def handle_callbacks(call):
 # 🛰️ SECTION 12: EXECUTION THREAD INITIALIZER
 # ──────────────────────────────────────────────────────────────────────
 
-print("🚀 Anti-block multi-threaded photo pipeline deployment complete. Active...")
+print("🚀 Security Auto-Ban engine & 5x Completion validation locks deployed. Online...")
 bot.infinity_polling()
