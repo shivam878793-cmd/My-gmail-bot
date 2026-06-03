@@ -9,7 +9,7 @@ from telebot import types
 # 🛰️ SECTION 1: SYSTEM IDENTITIES & TELEGRAM GLOBAL VARIABLES
 # ──────────────────────────────────────────────────────────────────────
 
-API_TOKEN = '7990556564:AAFeSZb6lh_Ha-ojnRvEONg4zTAfFu8606c'
+API_TOKEN = '7990556564:AAFYUQrYcQ7UmwbmFdjPShBFk_kLVYepRpA'
 ADMIN_ID = 8031127296
 
 # Telegram Routing Endpoint Coordinates Mapping
@@ -139,7 +139,7 @@ def force_join_keyboard():
     return markup
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 4: PIPELINE WORKERS & BACKGROUND TIMERS
+# 🛰️ SECTION 4: PIPELINE WORKERS & DUAL BACKGROUND TIMER SPLIT
 # ──────────────────────────────────────────────────────────────────────
 
 def register_user(user_id, referrer_id=None):
@@ -162,37 +162,52 @@ def register_user(user_id, referrer_id=None):
         print(f"Error captured in register_user flow execution maps: {reg_err}")
 
 def check_and_release_expired_tasks():
-    """Releases stale blocked stock back into pool upon timeout limit violations automatically."""
+    """Releases locked stock based on differentiated expiration rules (10m Single vs 60m Bulk)."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         current_time = int(time.time())
         
-        # Dead session cleanup limit threshold set to exactly 60 Minutes
-        expiry_limit = current_time - 3600
+        # ⚙️ CONFIGURATION ENGINE UPGRADE: Dual cancellation path arrays selection
+        limit_bulk = current_time - 3600  # 60 Minutes for Bulk/Review Matrix
+        limit_single = current_time - 600 # 10 Minutes for Single Mode Task
         
-        cursor.execute("SELECT id, user_id, task_type, task_id_list FROM sessions WHERE started_at < ? AND status = 'PENDING'", (expiry_limit,))
-        expired_sessions = cursor.fetchall()
+        cursor.execute("SELECT id, user_id, task_type, task_id_list, started_at FROM sessions WHERE status = 'PENDING'")
+        all_pending = cursor.fetchall()
         
-        for session in expired_sessions:
+        for session in all_pending:
             sid = session['id']
             uid = session['user_id']
             t_type = session['task_type']
+            started = session['started_at']
             
-            if t_type == 'REVIEW_TASK' and session['task_id_list']:
-                # Rollback specific dead lock review items safely so they can enter live streams again
-                cursor.execute("UPDATE review_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ? AND status = 'LOCKED'", (int(session['task_id_list']),))
-            elif session['task_id_list']:
-                ids = session['task_id_list'].split(',')
-                for t_id in ids:
-                    cursor.execute("UPDATE task_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ? AND status = 'LOCKED'", (int(t_id),))
+            is_expired = False
+            time_label = ""
             
-            cursor.execute("DELETE FROM sessions WHERE id = ?", (sid,))
-            try:
-                bot.send_message(uid, "⏰ **TIME OUT ALERT!**\n\n⚠️ Aapne **60 minute (1 ghanta)** ke andar task poora karke submit nahi kiya.\n❌ Isliye aapka task automatically **Cancel** karke system pool se release kar diya gaya hai!")
-            except:
-                pass
+            # Identify expiration state based on specific mode rules
+            if t_type in ['BATCH_ROW', 'REVIEW_TASK']:
+                if started < limit_bulk:
+                    is_expired = True
+                    time_label = "60 minute (1 ghanta)"
+            else: # SINGLE Gmail Tasks
+                if started < limit_single:
+                    is_expired = True
+                    time_label = "10 minute"
+                    
+            if is_expired:
+                if t_type == 'REVIEW_TASK' and session['task_id_list']:
+                    cursor.execute("UPDATE review_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ? AND status = 'LOCKED'", (int(session['task_id_list']),))
+                elif session['task_id_list']:
+                    ids = session['task_id_list'].split(',')
+                    for t_id in ids:
+                        cursor.execute("UPDATE task_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ? AND status = 'LOCKED'", (int(t_id),))
                 
+                cursor.execute("DELETE FROM sessions WHERE id = ?", (sid,))
+                try:
+                    bot.send_message(uid, f"⏰ **TIME OUT ALERT!**\n\n⚠️ Aapne **{time_label}** ke andar task poora karke submit nahi kiya.\n❌ Isliye aapka task automatically **Cancel** karke system pool se release kar diya gaya hai!")
+                except:
+                    pass
+                    
         conn.commit()
         conn.close()
     except Exception as expiry_err:
@@ -296,10 +311,8 @@ def process_final_channel_proof(message, session_id):
         task_label = "⭐ [REVIEW TASK PROOF VALIDATION]"
         review_target_id = int(session['task_id_list'])
         
-        # Pull accurate historical link targets to append inside administrative validation layouts
         review_data = conn.execute("SELECT review_link, review_msg FROM review_pool WHERE id = ?", (review_target_id,)).fetchone()
         
-        # Mark state to 'VERIFYING' so that nobody else pulls it from stock during manual auditing processes
         conn.execute("UPDATE review_pool SET status = 'VERIFYING' WHERE id = ?", (review_target_id,))
         conn.commit()
         conn.close()
@@ -313,7 +326,6 @@ def process_final_channel_proof(message, session_id):
             types.InlineKeyboardButton("🔴 Reject Review Task", callback_data=f"rev_reject_{user_id}_{session_id}_{review_target_id}")
         )
         
-        # ENHANCED CONTROL PANEL CAPTION: Injects target link and requirements clearly at the top as requested
         caption_text = (
             f"🔗 **TARGET REVIEW LINK:**\n{target_url}\n\n"
             f"📝 **REQUIREMENTS MESSAGE:**\n`{req_msg}`\n"
@@ -395,8 +407,8 @@ def task_options_menu():
     """Constructs the primary branching sub-menus for execution loops separation vectors."""
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
-        types.InlineKeyboardButton("📨 1 Gmail Task (₹15)", callback_data="task_single"),
-        types.InlineKeyboardButton("📦 10x Bulk Gmail Task (₹20/ea)", callback_data="task_batch")
+        types.InlineKeyboardButton("📨 1 Gmail Task (10 Min Timer)", callback_data="task_single"),
+        types.InlineKeyboardButton("📦 10x Bulk Gmail Task (60 Min Timer)", callback_data="task_batch")
     )
     return markup
 
@@ -681,6 +693,7 @@ def admin_view_stock_fixed(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **View Stock Error:** {e}")
 
+# ⭐ GHOST STOCK REAPPEARANCE REPAIR LAYER
 @bot.message_handler(commands=['deletetask'])
 def admin_delete_task(message):
     if message.from_user.id != ADMIN_ID: return
@@ -696,10 +709,12 @@ def admin_delete_task(message):
             bot.send_message(ADMIN_ID, f"❌ **Task ID `{task_id}` Live Stock me nahi mili.**")
             conn.close()
             return
+            
+        # Hard commit execution structure to flush target row out of WAL registers completely
         conn.execute("DELETE FROM task_pool WHERE id = ?", (task_id,))
         conn.commit()
         conn.close()
-        bot.send_message(ADMIN_ID, f"🗑️ **Stock Se Deleted!**\n🆔 Task ID: `{task_id}` has been dropped from live pool.")
+        bot.send_message(ADMIN_ID, f"🗑️ **Stock Se Deleted!**\n🆔 Task ID: `{task_id}` has been dropped from live pool forever.")
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Delete Task Error:** {e}")
 
@@ -815,8 +830,8 @@ def handle_text_messages(message):
     if message.text == "📨 Get Gmail Task":
         info_header = (
             "🚀 **GMAIL TASK RULES & REWARDS** 🚀\n\n"
-            "📌 **Note: Jo Single Mode se Gmail banayega usko ₹15 milega.**\n"
-            "🔥 **Lekin agar aap Bulk Mode me 10x Gmail complete karte hain, toh aapko ₹20/Gmail milega!**\n\n"
+            "📌 **Note: Jo Single Mode se Gmail banayega usko ₹15 milega (10 Mins Expiry).**\n"
+            "🔥 **Lekin agar aap Bulk Mode me 10x Gmail complete karte hain, toh aapko ₹20/Gmail milega (60 Mins Expiry)!**\n\n"
             "👇 **Niche diye gaye options me se apna task option select karein:**"
         )
         bot.send_message(message.chat.id, info_header, parse_mode="Markdown", reply_markup=task_options_menu())
@@ -862,14 +877,10 @@ def handle_text_messages(message):
         content = res['value'] if res else "📹 **No Tutorial Set by Admin yet.**"
         bot.send_message(message.chat.id, content, parse_mode="Markdown")
         
-    # ⭐ ENHANCED STOCK DRAIN REPAIR GATE: Instant isolation occurs right at user click event!
     elif message.text == "⭐ Review Task":
         conn = get_db_connection()
-        
-        # Pulls exactly one element currently available in stock
         review = conn.execute("SELECT * FROM review_pool WHERE status = 'AVAILABLE' ORDER BY id ASC LIMIT 1").fetchone()
         
-        # Trigger explicit empty stock notification layout if no items are matched
         if not review:
             bot.send_message(message.chat.id, "⚠️ **No Review Task Available!**\n\n⚡ Pool me filhal koi review task stock nahi hai. Admin jaise hi naye tasks load karenge, aapko notify kar diya jayega yrr!")
             conn.close()
@@ -878,9 +889,7 @@ def handle_text_messages(message):
         r_reward = conn.execute("SELECT value FROM settings WHERE key = 'review_reward'").fetchone()['value']
         current_time = int(time.time())
         
-        # CRITICAL REPAIR FIX: Changes the review state to 'LOCKED' immediately to isolate it from other concurrent streams
         conn.execute("UPDATE review_pool SET status = 'LOCKED', assigned_to = ?, assigned_at = ? WHERE id = ?", (user_id, current_time, review['id']))
-        
         cursor = conn.execute("INSERT INTO sessions (user_id, task_type, task_id_list, started_at) VALUES (?, 'REVIEW_TASK', ?, ?)", (user_id, str(review['id']), current_time))
         sid = cursor.lastrowid
         conn.commit()
@@ -986,7 +995,6 @@ def handle_callbacks(call):
         bot.answer_callback_query(call.id, "❌ Access Blocked! Pehle channels join verify karein.", show_alert=True)
         return
 
-    # REVIEW TASK DECISION VALIDATOR FOR ADMIN MODULES
     if call.data.startswith("rev_"):
         if user_id != ADMIN_ID: return
         parts = call.data.split("_")
@@ -1003,7 +1011,7 @@ def handle_callbacks(call):
             try: bot.send_message(target_user, "🎉 **Whohoo Apka review google map Par live hai Apka Money Apke Wallet ma add kardiya gaya hai**")
             except: pass
         elif action == "reject":
-            # REJECT TRACKING OPTIMIZED: Safely resets index configuration fields to 'AVAILABLE' status layers
+            # BUG DISMANTLED CRITICAL ROUTE GHOST FLUSH: Drops connection cache safely upon hard reject settings
             conn.execute("UPDATE review_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ?", (review_pool_id,))
             conn.execute("UPDATE sessions SET status = 'REJECTED' WHERE id = ?", (session_id,))
             conn.commit()
@@ -1061,10 +1069,11 @@ def handle_callbacks(call):
             if session:
                 ids = session['task_id_list'].split(',')
                 for t_id in ids:
+                    # GHOST EXTERMINATION ON REJECTED TASKS: Hard deletes index rows from dynamic pool safely
                     conn.execute("DELETE FROM task_pool WHERE id = ?", (int(t_id),))
             conn.execute("UPDATE sessions SET status = 'REJECTED' WHERE id = ?", (session_id,))
             conn.commit()
-            bot.edit_message_caption("🔴 **Rejected & Destroyed From Stock!**", chat_id, call.message.message_id)
+            bot.edit_message_caption("🔴 **Rejected & Permanently Purged From Database Stock Structure Space!**", chat_id, call.message.message_id)
             bot.send_message(target_user, "❌ **Aapka proof reject ho gaya. Credentials stock se permanently delete ho gaye hain.**")
         conn.close()
         return
@@ -1091,7 +1100,7 @@ def handle_callbacks(call):
             "📨 **AAPKA SINGLE MODE GMAIL TASK** 📨\n\n"
             f"📧 **Gmail:** `{task['gmail']}`\n"
             f"🔑 **Password:** `{task['password']}`\n\n"
-            "⚠️ **Note:** Diye gaye details se successfully account config karke **60 minute** ke andar proof submit karein, warna stock lock release ho jayega!"
+            "⚠️ **Note:** Diye gaye details se successfully account config karke **10 minute** ke andar proof submit karein, warna stock lock release ho jayega!"
         )
         bot.send_message(chat_id, task_msg, parse_mode="Markdown", reply_markup=markup)
 
@@ -1134,14 +1143,12 @@ def handle_callbacks(call):
         conn.commit()
         conn.close()
 
-    # ⭐ STABLE AUTO-ROLLBACK REGION: If the user cancels the task, it immediately goes back into stock pool!
     elif call.data.startswith("cancel_"):
         sid = int(call.data.split('_')[1])
         session = conn.execute("SELECT * FROM sessions WHERE id = ?", (sid,)).fetchone()
         
         if session:
             if session['task_type'] == 'REVIEW_TASK':
-                # FIX IMPLEMENTED: Immediately resets status to 'AVAILABLE' inside stock and unbinds user pointers
                 conn.execute("UPDATE review_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ?", (int(session['task_id_list']),))
             else:
                 ids = session['task_id_list'].split(',')
@@ -1195,5 +1202,5 @@ def handle_callbacks(call):
 # 🛰️ SECTION 12: SERVICE POLICE INITIALIZATION POLLING LAYER
 # ──────────────────────────────────────────────────────────────────────
 
-print("🚀 Production Layer-7 Protection Engine successfully armed. Review link tracking active...")
+print("🚀 Dual-Timer Split & Ghost Stock Purge Framework running flawlessly. Listening live...")
 bot.infinity_polling()
