@@ -9,7 +9,7 @@ from telebot import types
 # 🛰️ SECTION 1: SYSTEM IDENTITIES & TELEGRAM GLOBAL VARIABLES
 # ──────────────────────────────────────────────────────────────────────
 
-API_TOKEN = '7990556564:AAFYUQrYcQ7UmwbmFdjPShBFk_kLVYepRpA'
+API_TOKEN = '7990556564:AAFeSZb6lh_Ha-ojnRvEONg4zTAfFu8606c'
 ADMIN_ID = 8031127296
 
 # Telegram Routing Endpoint Coordinates Mapping
