@@ -101,8 +101,18 @@ def init_db():
         cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('lock_bulk_mode', 'UNLOCK')")
         cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('lock_unlimited_mode', 'UNLOCK')")
         
-        # 📌 FIXED LAYER: Rules formatted perfectly as per image 19934.jpg with ONLY password copyable wrapped
-        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('unlimited_rule_msg', 'RULE GMAIL NAME ME NHI DUGA KHUD BANANA HAI\\n\\n1. GMAIL NAME REAL TYPE HONA CHAYEA KISI KA NAME KUCH BHI MAT LIKH DENA\\n\\n2. GMAIL BANTE TIME AGE 1990 SA 1999 KE BECH MA RAKHNA\\n\\n3. GMAIL PASSWORD NICHE DIYA HU WO RAKHNA WO SAME HOGA SABMA\\n\\n4. SUBMIT KE BAAD GMAIL DELETE MAT KARNA PAYMENT ANE KE BAAD GMAIL LOG OUT KARDENA DELETE MAT KARNA\\n\\nPASSWORD :- `malam222`')")
+        # 📌 FIXED EXACT TEXT LAYOUT: Exact step-by-step spacing matched as per image 19936.jpg with double-tap copy password wrapper
+        cursor.execute("""INSERT OR REPLACE INTO settings (key, value) VALUES ('unlimited_rule_msg', 'RULE GMAIL NAME ME NHI DUGA KHUD BANANA HAI
+
+1. GMAIL NAME REAL TYPE HONA CHAYEA KISI KA NAME KUCH BHI MAT LIKH DENA
+
+2. GMAIL BANTE TIME AGE 1990 SA 1999 KE BECH MA RAKHNA
+
+3. GMAIL PASSWORD NICHE DIYA HU WO RAKHNA WO SAME HOGA SABMA
+
+4. SUBMIT KE BAAD GMAIL DELETE MAT KARNA PAYMENT ANE KE BAAD GMAIL LOG OUT KARDENA DELETE MAT KARNA
+
+PASSWORD :- `malam222`')""")
         conn.commit()
 
 try:
@@ -1120,7 +1130,7 @@ def handle_callbacks(call):
                 )
                 
                 row_text = f"{index}️⃣. 📧 `{t['gmail']}` | 🔑 `{t['password']}`"
-                bot.send_message(chat_id, row_text, parse_mode="Markdown", reply_markup=row_markup)
+                bot.send_message(chat_id=chat_id, text=row_text, parse_mode="Markdown", reply_markup=row_markup)
             conn.commit()
 
     # 🌟 NEW UPGRADE REGISTER: Preview option layer displaying dynamic custom admin set message rules strings BEFORE unlocking submissions routing
