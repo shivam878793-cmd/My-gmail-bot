@@ -95,6 +95,14 @@ def init_db():
         # Seed static parameters defaults if records do not exist
         cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('tutorial', '📹 **Help & Tutorial Video:**\\n\\n[No video link set yet by admin. Use /sethelp to update]')")
         cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('review_reward', '5.0')")
+        
+        # ADVANCED CONTROL SEED INJECTIONS: Initializes status registers for independent locking vectors safely
+        cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('lock_single_mode', 'UNLOCK')")
+        cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('lock_bulk_mode', 'UNLOCK')")
+        cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('lock_unlimited_mode', 'UNLOCK')")
+        
+        # NEW HOOK SEED INJECTION: Initializes customizable rule text storage block strings maps for unlimited creations mode
+        cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('unlimited_rule_msg', '📌 **Unlimited Gmail Creation Rules:**\\n\\n1. DOB me 1990-1999 hi select karein.\\n2. Password sabhi accounts ka same rakhein: `RakaTeam@2026`\\n3. Kaam poora hone par device se account logout karein, delete nahi!')")
         conn.commit()
 
 try:
@@ -188,6 +196,9 @@ def check_and_release_expired_tasks():
                     if started < limit_bulk:
                         is_expired = True
                         time_label = "60 minute (1 ghanta)"
+                elif t_type in ['UNLIMITED_MODE', 'UNLIMITED_PREVIEW']:
+                    # Unlimited mode tasks are directly submitted by user, no stock rollbacks are necessary
+                    continue
                 else: # SINGLE Gmail Tasks
                     if started < limit_single:
                         is_expired = True
@@ -329,6 +340,24 @@ def process_final_channel_proof(message, session_id):
             f"*Select appropriate resolution parameters from administrative blocks below:* "
         )
         
+    elif session['task_type'] == 'UNLIMITED_MODE':
+        task_label = "♾️ [UNLIMITED MODE CREATION PROOF]"
+        raw_credentials = session['task_id_list']
+        
+        admin_markup = types.InlineKeyboardMarkup()
+        admin_markup.add(
+            types.InlineKeyboardButton("🟢 Approve Creation (₹15)", callback_data=f"unl_approve_{user_id}_{session_id}"),
+            types.InlineKeyboardButton("🔴 Reject Creation", callback_data=f"unl_reject_{user_id}_{session_id}")
+        )
+        
+        caption_text = (
+            f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n"
+            f"📋 **TASK TYPE:** `{task_label}`\n"
+            f"👤 **User ID:** `{user_id}`\n\n"
+            f"📋 **SUBMITTED GMAIL CHARACTERISTICS:**\n`{raw_credentials}`\n\n"
+            f"⚠️ **Admin Audit:** Check details inside image layout and resolve:"
+        )
+        
     else:
         task_label = "📨 [SINGLE MODE TASK PROOF]"
         ids_count = len(session['task_id_list'].split(','))
@@ -396,10 +425,10 @@ def main_menu():
 def task_options_menu():
     """Constructs the primary branching inline parameters with customized pricing format mappings."""
     markup = types.InlineKeyboardMarkup(row_width=1)
-    # UPDATED: Button labels mapped to exactly append custom parameters requested by the user
     markup.add(
         types.InlineKeyboardButton("📨 1 Gmail Task (₹15)", callback_data="task_single"),
-        types.InlineKeyboardButton("📦 10x Bulk Gmail Task (₹20/ea)", callback_data="task_batch")
+        types.InlineKeyboardButton("📦 10x Bulk Gmail Task (₹20/ea)", callback_data="task_batch"),
+        types.InlineKeyboardButton("♾️ Create Unlimited Gmail (₹15)", callback_data="preview_unlimited")
     )
     return markup
 
@@ -437,7 +466,6 @@ def start_cmd(message):
         return
 
     bot.send_message(
-        message.chat.id, 
         "👋 **WELCOME TO GMAIL TASK BOT!**\n\n⚡ Yahan aap daily simple Gmail create karne ka kaam karke bohot achhi earning kar sakte hain.\n\n👇 Niche diye buttons se apna kaam shuru karein aur paise kamayein!", 
         reply_markup=main_menu()
     )
@@ -445,6 +473,71 @@ def start_cmd(message):
 # ──────────────────────────────────────────────────────────────────────
 # 🛰️ SECTION 8: EXTENSIVE ADMINISTRATIVE INFRASTRUCTURE SUITE
 # ──────────────────────────────────────────────────────────────────────
+
+# 🌟 NEW UPGRADE REGISTER: Admin custom command strings mapping parser to modify the unlimited creation rule blocks text
+@bot.message_handler(commands=['setunlimitedmsg'])
+def admin_set_unlimited_mode_rules_text(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        raw_rules = message.text.replace("/setunlimitedmsg", "").strip()
+        if not raw_rules:
+            bot.send_message(ADMIN_ID, "❌ **Sahi Format:** `/setunlimitedmsg <write all unlimited mode guidelines here>`")
+            return
+        with get_db_connection() as conn:
+            conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('unlimited_rule_msg', ?)", (raw_rules,))
+            conn.commit()
+        bot.send_message(ADMIN_ID, "✅ **Unlimited Gmail Creation Rule Text updated inside database successfully!**")
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ Data Injection Error: {e}")
+
+# LOCK PARSERS: Dynamic operational switches mapping state variables inside configurations database space
+@bot.message_handler(commands=['locksingle'])
+def admin_lock_single(message):
+    if message.from_user.id != ADMIN_ID: return
+    with get_db_connection() as conn:
+        conn.execute("UPDATE settings SET value = 'LOCK' WHERE key = 'lock_single_mode'")
+        conn.commit()
+    bot.send_message(ADMIN_ID, "🔒 **Single Gmail Task option has been LOCKED successfully!**")
+
+@bot.message_handler(commands=['unlocksingle'])
+def admin_unlock_single(message):
+    if message.from_user.id != ADMIN_ID: return
+    with get_db_connection() as conn:
+        conn.execute("UPDATE settings SET value = 'UNLOCK' WHERE key = 'lock_single_mode'")
+        conn.commit()
+    bot.send_message(ADMIN_ID, "🟢 **Single Gmail Task option has been UNLOCKED successfully!**")
+
+@bot.message_handler(commands=['lockbulk'])
+def admin_lock_bulk(message):
+    if message.from_user.id != ADMIN_ID: return
+    with get_db_connection() as conn:
+        conn.execute("UPDATE settings SET value = 'LOCK' WHERE key = 'lock_bulk_mode'")
+        conn.commit()
+    bot.send_message(ADMIN_ID, "🔒 **10x Bulk Gmail Task option has been LOCKED successfully!**")
+
+@bot.message_handler(commands=['unlockbulk'])
+def admin_unlock_bulk(message):
+    if message.from_user.id != ADMIN_ID: return
+    with get_db_connection() as conn:
+        conn.execute("UPDATE settings SET value = 'UNLOCK' WHERE key = 'lock_bulk_mode'")
+        conn.commit()
+    bot.send_message(ADMIN_ID, "🟢 **10x Bulk Gmail Task option has been UNLOCKED successfully!**")
+
+@bot.message_handler(commands=['lockunlimited'])
+def admin_lock_unlimited(message):
+    if message.from_user.id != ADMIN_ID: return
+    with get_db_connection() as conn:
+        conn.execute("UPDATE settings SET value = 'LOCK' WHERE key = 'lock_unlimited_mode'")
+        conn.commit()
+    bot.send_message(ADMIN_ID, "🔒 **Create Unlimited Gmail option has been LOCKED successfully!**")
+
+@bot.message_handler(commands=['unlockunlimited'])
+def admin_unlock_unlimited(message):
+    if message.from_user.id != ADMIN_ID: return
+    with get_db_connection() as conn:
+        conn.execute("UPDATE settings SET value = 'UNLOCK' WHERE key = 'lock_unlimited_mode'")
+        conn.commit()
+    bot.send_message(ADMIN_ID, "🟢 **Create Unlimited Gmail option has been UNLOCKED successfully!**")
 
 @bot.message_handler(commands=['ban'])
 def admin_manual_ban(message):
@@ -481,105 +574,6 @@ def admin_manual_unban(message):
         except: pass
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ Error: {e}")
-
-@bot.message_handler(commands=['addreview'])
-def admin_add_single_review_task(message):
-    if message.from_user.id != ADMIN_ID: return
-    try:
-        raw_text = message.text.replace("/addreview", "").strip()
-        if not raw_text or " : " not in raw_text:
-            bot.send_message(ADMIN_ID, "❌ **Format:** `/addreview link : message requirements`")
-            return
-        r_link, r_msg = raw_text.split(" : ", 1)
-        with get_db_connection() as conn:
-            conn.execute("INSERT INTO review_pool (review_link, review_msg, status) VALUES (?, ?, 'AVAILABLE')", (r_link.strip(), r_msg.strip()))
-            conn.commit()
-            count = conn.execute("SELECT COUNT(*) as total FROM review_pool WHERE status = 'AVAILABLE'").fetchone()['total']
-        
-        bot.send_message(ADMIN_ID, f"✅ **Single Review Task Loaded!**\n📦 Total Available Reviews: `{count}`\n📢 *Launching async dynamic user notifications loops...*")
-        auto_review_broadcast_alert(1, count)
-    except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ Data Insertion Fail: {e}")
-
-@bot.message_handler(commands=['bulkaddreview'])
-def admin_bulk_add_review_tasks(message):
-    if message.from_user.id != ADMIN_ID: return
-    try:
-        raw_text = message.text.replace("/bulkaddreview", "").strip()
-        if not raw_text:
-            bot.send_message(ADMIN_ID, "❌ **Format:**\n\n`/bulkaddreview`\n`link1 : message1`\n`link2 : message2`")
-            return
-        lines = raw_text.split("\n")
-        success_count = 0
-        with get_db_connection() as conn:
-            for line in lines:
-                if " : " in line:
-                    try:
-                        r_link, r_msg = line.strip().split(" : ", 1)
-                        conn.execute("INSERT INTO review_pool (review_link, review_msg, status) VALUES (?, ?, 'AVAILABLE')", (r_link.strip(), r_msg.strip()))
-                        success_count += 1
-                    except: pass
-            conn.commit()
-            total_stock = conn.execute("SELECT COUNT(*) as total FROM review_pool WHERE status = 'AVAILABLE'").fetchone()['total']
-        
-        bot.send_message(ADMIN_ID, f"📦 **Bulk Review Import Status:**\n✅ Added Elements: {success_count}\n🔥 Total Live Review Stock: {total_stock}\n📢 *Launching background notification matrix engines...*")
-        if success_count > 0:
-            auto_review_broadcast_alert(success_count, total_stock)
-    except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ Bulk Add Review Error: {e}")
-
-@bot.message_handler(commands=['viewreview'])
-def admin_view_review_stock(message):
-    if message.from_user.id != ADMIN_ID: return
-    try:
-        with get_db_connection() as conn:
-            reviews = conn.execute("SELECT id, review_link FROM review_pool WHERE status = 'AVAILABLE' ORDER BY id ASC LIMIT 20").fetchall()
-            total_available = conn.execute("SELECT COUNT(*) as total FROM review_pool WHERE status = 'AVAILABLE'").fetchone()['total']
-        if not reviews:
-            bot.send_message(ADMIN_ID, "📦 **Review Stock Pool Empty Hai!**")
-            return
-        stock_text = f"🔥 **LIVE AVAILABLE REVIEWS (Total: {total_available})** 🔥\n\n"
-        for r in reviews:
-            stock_text += f"🆔 `ID: {r['id']}`\n🔗 `{r['review_link']}`\n───────────────────\n"
-        bot.send_message(ADMIN_ID, stock_text, parse_mode="Markdown")
-    except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ View Review Error: {e}")
-
-@bot.message_handler(commands=['deletereview'])
-def admin_delete_review_task(message):
-    if message.from_user.id != ADMIN_ID: return
-    try:
-        task_id = message.text.replace("/deletereview", "").strip()
-        if not task_id or not task_id.isdigit():
-            bot.send_message(ADMIN_ID, "❌ **Format:** `/deletereview ID`")
-            return
-        task_id = int(task_id)
-        with get_db_connection() as conn:
-            check = conn.execute("SELECT * FROM review_pool WHERE id = ? AND status = 'AVAILABLE'", (task_id,)).fetchone()
-            if not check:
-                bot.send_message(ADMIN_ID, f"❌ Review ID `{task_id}` stock pool me nahi mili.")
-                return
-            conn.execute("DELETE FROM review_pool WHERE id = ?", (task_id,))
-            conn.commit()
-        bot.send_message(ADMIN_ID, f"🗑️ **Review ID `{task_id}` dropped from live pool successfully!**")
-    except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ Delete Review Error: {e}")
-
-@bot.message_handler(commands=['setreviewreward'])
-def admin_set_review_payout_amount(message):
-    if message.from_user.id != ADMIN_ID: return
-    try:
-        raw_amt = message.text.replace("/setreviewreward", "").strip()
-        if not raw_amt:
-            bot.send_message(ADMIN_ID, "❌ **Format:** `/setreviewreward <numerical digits>`")
-            return
-        reward_float = float(raw_amt)
-        with get_db_connection() as conn:
-            conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('review_reward', ?)", (str(reward_float),))
-            conn.commit()
-        bot.send_message(ADMIN_ID, f"✅ **Review Task Base Payout Updated!**\n💰 Reward Amount: ₹{reward_float}")
-    except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ Data Conversion Error: {e}")
 
 @bot.message_handler(commands=['addbalance'])
 def admin_add_balance(message):
@@ -670,7 +664,7 @@ def admin_view_stock_fixed(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **View Stock Error:** {e}")
 
-# GHOST STOCK REAPPEARANCE REPAIR LAYER
+# GHOST STOCK REAPPEARANCE REPAIR LAYER: Solves image 19726.jpg memory cache overlaps cleanly
 @bot.message_handler(commands=['deletetask'])
 def admin_delete_task(message):
     if message.from_user.id != ADMIN_ID: return
@@ -685,8 +679,6 @@ def admin_delete_task(message):
             if not task_check:
                 bot.send_message(ADMIN_ID, f"❌ **Task ID `{task_id}` Live Stock me nahi mili.**")
                 return
-                
-            # Hard commit execution structure to flush target row out of WAL registers completely
             conn.execute("DELETE FROM task_pool WHERE id = ?", (task_id,))
             conn.commit()
         bot.send_message(ADMIN_ID, f"🗑️ **Stock Se Deleted!**\n🆔 Task ID: `{task_id}` has been dropped from live pool forever.")
@@ -798,7 +790,6 @@ def handle_text_messages(message):
         return
         
     if message.text == "📨 Get Gmail Task":
-        # UPDATED: Injected highly specific validation rules as requested by the user explicitly
         info_header = (
             "🚀 **GMAIL TASK RULES & REWARDS** 🚀\n\n"
             "📌 **Rule: Create Gmail And Select 1990-1999 If You Select 2000 your gmail Rejected And After Paid Payment Logout Gmail In Your phone Don''t Delete Gmail Only Logout**\n\n"
@@ -959,6 +950,29 @@ def handle_callbacks(call):
         bot.answer_callback_query(call.id, "❌ Access Blocked! Pehle channels join verify karein.", show_alert=True)
         return
 
+    # UNLIMITED MODE DEPLOYMENT CALLBACK PARSERS PIPELINES MAPPING
+    if call.data.startswith("unl_"):
+        if call.from_user.id != ADMIN_ID: return
+        parts = call.data.split("_")
+        action, target_user, session_id = parts[1], int(parts[2]), int(parts[3])
+        
+        if action == "approve":
+            with get_db_connection() as conn:
+                conn.execute("UPDATE users SET balance = balance + 15.0 WHERE user_id = ?", (target_user,))
+                conn.execute("UPDATE sessions SET status = 'APPROVED' WHERE id = ?", (session_id,))
+                conn.commit()
+            bot.edit_message_caption("🟢 **Unlimited Creation Task Approved! Added ₹15.00 points to user account.**", chat_id, call.message.message_id)
+            try: bot.send_message(target_user, "🎉 **UNLIMITED GMAIL TASK APPROVED!**\n\nAdmin ne aapka self-created account verification check pass kar diya hai!\n💰 **🔥 ₹15 Cash Reward** aapke balance profile wallet me credit ho chuka hai!")
+            except: pass
+        elif action == "reject":
+            with get_db_connection() as conn:
+                conn.execute("UPDATE sessions SET status = 'REJECTED' WHERE id = ?", (session_id,))
+                conn.commit()
+            bot.edit_message_caption("🔴 **Unlimited Creation Task REJECTED! Alert sent to user records.**", chat_id, call.message.message_id)
+            try: bot.send_message(target_user, "❌ **Apka Gmail Reject ho gaya hai aur iska koi bhi payment wallet me add nahi kiya gaya hai. Rules padhein!**")
+            except: pass
+        return
+
     if call.data.startswith("rev_"):
         if user_id != ADMIN_ID: return
         parts = call.data.split('_')
@@ -1039,6 +1053,12 @@ def handle_callbacks(call):
 
     if call.data == "task_single":
         with get_db_connection() as conn:
+            # 🔐 INDEPENDENT LAYER GATE INTERCEPT: Evaluates lock parameters inside configurations tables dynamically
+            lock_chk = conn.execute("SELECT value FROM settings WHERE key = 'lock_single_mode'").fetchone()['value']
+            if lock_chk == 'LOCK':
+                bot.answer_callback_query(call.id, "🔒 Locked! Admin ne Single Gmail Task option ko filhal temporary closed kiya hai yrr!", show_alert=True)
+                return
+
             task = conn.execute("SELECT * FROM task_pool WHERE status = 'AVAILABLE' ORDER BY random() LIMIT 1").fetchone()
             if not task:
                 bot.answer_callback_query(call.id, "⚠️ Stock Empty! Admin se bolo aur load karein.", show_alert=True)
@@ -1063,6 +1083,12 @@ def handle_callbacks(call):
 
     elif call.data == "task_batch":
         with get_db_connection() as conn:
+            # 🔐 INDEPENDENT LAYER GATE INTERCEPT: Evaluates lock parameters inside configurations tables dynamically
+            lock_chk = conn.execute("SELECT value FROM settings WHERE key = 'lock_bulk_mode'").fetchone()['value']
+            if lock_chk == 'LOCK':
+                bot.answer_callback_query(call.id, "🔒 Locked! Admin ne 10x Bulk Gmail Task option ko filhal temporary closed kiya hai yrr!", show_alert=True)
+                return
+
             submitted_rows = conn.execute("SELECT COUNT(*) as total FROM sessions WHERE user_id = ? AND task_type = 'SINGLE'", (user_id,)).fetchone()
             current_submissions = submitted_rows['total'] if submitted_rows else 0
             
@@ -1097,6 +1123,43 @@ def handle_callbacks(call):
                 bot.send_message(chat_id, row_text, parse_mode="Markdown", reply_markup=row_markup)
             conn.commit()
 
+    # 🌟 NEW UPGRADE REGISTER: Preview option layer displaying dynamic custom admin set message rules strings BEFORE unlocking submissions routing
+    elif call.data == "preview_unlimited":
+        with get_db_connection() as conn:
+            # 🔐 INDEPENDENT LOCK ENGINE GATEWAY
+            lock_chk = conn.execute("SELECT value FROM settings WHERE key = 'lock_unlimited_mode'").fetchone()['value']
+            if lock_chk == 'LOCK':
+                bot.answer_callback_query(call.id, "🔒 Locked! Admin ne Create Unlimited Gmail option ko filhal temporary closed kiya hai yrr!", show_alert=True)
+                return
+                
+            rules_msg = conn.execute("SELECT value FROM settings WHERE key = 'unlimited_rule_msg'").fetchone()['value']
+            
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        markup.add(
+            types.InlineKeyboardButton("✅ Sahi Hai (Submit Gmail + SS)", callback_data="task_unlimited"),
+            types.InlineKeyboardButton("❌ Cancel", callback_data="cancel_preview_mode")
+        )
+        
+        bot.send_message(
+            chat_id, 
+            f"📋 **CREATE UNLIMITED GMAIL: STRATIFIED RULES** 📋\n\n{rules_msg}\n\n⚠️ **Important:** Upar diye gaye saare rules ko dhyan se padhein, uske baad hi niche button par click karke details submit karein!", 
+            parse_mode="Markdown", 
+            reply_markup=markup
+        )
+
+    # ♾️ REAL-TIME DATA SUBMISSION INITIALIZER UNLOCKED POST-PREVIEW ACCEPTANCE
+    elif call.data == "task_unlimited":
+        try: bot.delete_message(chat_id, call.message.message_id)
+        except: pass
+        
+        msg = bot.send_message(chat_id, "♾️ **CREATE UNLIMITED GMAIL CENTRE** ♾️\n\nAapne jo fresh unique account create kiya hai uski ID neeche diye gaye format me type karke send karein:\n\n👉 **Format:** `Email` (Password input dene ki zaroorat nahi hai, hamare rules ke mutabiq automatic mapping process ho jayega yrr!)")
+        bot.register_next_step_handler(msg, capture_unlimited_text_credentials)
+
+    elif call.data == "cancel_preview_mode":
+        try: bot.delete_message(chat_id, call.message.message_id)
+        except: pass
+        bot.send_message(chat_id, "❌ **Task Cancelled!** Creation pipeline reset to safe configuration limits.", reply_markup=main_menu())
+
     elif call.data.startswith("cancel_"):
         sid = int(call.data.split('_')[1])
         with get_db_connection() as conn:
@@ -1105,6 +1168,8 @@ def handle_callbacks(call):
             if session:
                 if session['task_type'] == 'REVIEW_TASK':
                     conn.execute("UPDATE review_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ?", (int(session['task_id_list']),))
+                elif session['task_type'] == 'UNLIMITED_MODE':
+                    pass
                 else:
                     ids = session['task_id_list'].split(',')
                     for t_id in ids:
@@ -1112,7 +1177,7 @@ def handle_callbacks(call):
                 
                 conn.execute("DELETE FROM sessions WHERE id = ?", (sid,))
                 
-                if session['task_type'] != 'REVIEW_TASK':
+                if session['task_type'] not in ['REVIEW_TASK', 'UNLIMITED_MODE']:
                     conn.execute("UPDATE users SET cancel_count = cancel_count + 1 WHERE user_id = ?", (user_id,))
                     conn.commit()
                     u_update = conn.execute("SELECT cancel_count FROM users WHERE user_id = ?", (user_id,)).fetchone()
@@ -1149,6 +1214,29 @@ def handle_callbacks(call):
         sid = int(call.data.split('_')[1])
         msg = bot.send_message(chat_id, "📸 **PROOF SUBMISSION CENTRE**\n\nAapne jo task abhi successfully kiya hai, uska clear image screenshot proof send karein:")
         bot.register_next_step_handler(msg, process_final_channel_proof, sid)
+
+# ──────────────────────────────────────────────────────────────────────
+# 🛰️ SECTION 11.5: STEP HANDLERS ROUTINES FOR UNLIMITED CREATION MODE
+# ──────────────────────────────────────────────────────────────────────
+
+def capture_unlimited_text_credentials(message):
+    """Saves raw text credentials inside temporary database spaces and triggers explicit screenshot prompts."""
+    user_id = message.from_user.id
+    raw_input = message.text
+    
+    if not raw_input:
+        bot.send_message(message.chat.id, "❌ **INPUT ERROR!**\n\n⚠️ Kripya details ko sahi text template format me hi send karein. Process reset. Dubara click karein.")
+        return
+        
+    current_time = int(time.time())
+    with get_db_connection() as conn:
+        # Save credentials as custom trace string variables within sessions table parameters
+        cursor = conn.execute("INSERT INTO sessions (user_id, task_type, task_id_list, started_at) VALUES (?, 'UNLIMITED_MODE', ?, ?)", (user_id, raw_input.strip(), current_time))
+        sid = cursor.lastrowid
+        conn.commit()
+        
+    msg = bot.send_message(message.chat.id, "📸 **Ab is create kiye huye account ka clear image screenshot proof send karein:**")
+    bot.register_next_step_handler(msg, process_final_channel_proof, sid)
 
 # ──────────────────────────────────────────────────────────────────────
 # 🛰️ SECTION 12: SERVICE POLICE INITIALIZATION POLLING LAYER
