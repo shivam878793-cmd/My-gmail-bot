@@ -101,7 +101,7 @@ def init_db():
         cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('lock_bulk_mode', 'UNLOCK')")
         cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('lock_unlimited_mode', 'UNLOCK')")
         
-        # 📌 FIXED EXACT TEXT LAYOUT: Exact step-by-step spacing matched as per image 19936.jpg with double-tap copy password wrapper
+        # 📌 FIXED EXACT TEXT LAYOUT: Exact step-by-step spacing matched as per image 19936_2.jpg with double-tap copy password wrapper
         cursor.execute("""INSERT OR REPLACE INTO settings (key, value) VALUES ('unlimited_rule_msg', 'RULE GMAIL NAME ME NHI DUGA KHUD BANANA HAI
 
 1. GMAIL NAME REAL TYPE HONA CHAYEA KISI KA NAME KUCH BHI MAT LIKH DENA
@@ -1162,7 +1162,14 @@ def handle_callbacks(call):
         try: bot.delete_message(chat_id, call.message.message_id)
         except: pass
         
-        msg = bot.send_message(chat_id, "♾️ **CREATE UNLIMITED GMAIL CENTRE** ♾️\n\nAapne jo fresh unique account create kiya hai uski ID neeche diye gaye format me type karke send karein:\n\n👉 **Format:** `Email` (Password input karne ki zaroorat nahi hai, automatic block process lock ho jayega!)")
+        # 📌 INJECTED FIXED LAYOUT: Appends accurate visual guide template example exactly below step 4 parameters cleanly as mandated
+        unlimited_input_prompt = (
+            "♾️ **CREATE UNLIMITED GMAIL CENTRE** ♾️\n\n"
+            "Aapne jo fresh unique account create kiya hai uski ID neeche diye gaye format me type karke send karein:\n\n"
+            "👉 **Format:** `Email` (Password input karne ki zaroorat nahi hai, automatic block process lock ho jayega!)\n\n"
+            "📝 **Example:**\n`RakeshManu716@Gmail.com` [This is Example Only]"
+        )
+        msg = bot.send_message(chat_id, unlimited_input_prompt, parse_mode="Markdown")
         bot.register_next_step_handler(msg, capture_unlimited_text_credentials)
 
     elif call.data == "cancel_preview_mode":
