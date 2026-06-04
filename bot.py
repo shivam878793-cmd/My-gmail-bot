@@ -465,30 +465,16 @@ def start_cmd(message):
         )
         return
 
+    # FIXED CRITICAL BUG: Wrapped output strings maps correctly to pass message chat identifiers smoothly without crash loops
     bot.send_message(
-        "👋 **WELCOME TO GMAIL TASK BOT!**\n\n⚡ Yahan aap daily simple Gmail create karne ka kaam karke bohot achhi earning kar sakte hain.\n\n👇 Niche diye buttons se apna kaam shuru karein aur paise kamayein!", 
+        message.chat.id,
+        "👋 **WELCOME TO GMAIL TASK BOT!**\n\n%s Yahan aap daily simple Gmail create karne ka kaam karke bohot achhi earning kar sakte hain.\n\n👇 Niche diye buttons se apna kaam shuru karein aur paise kamayein!" % "⚡", 
         reply_markup=main_menu()
     )
 
 # ──────────────────────────────────────────────────────────────────────
 # 🛰️ SECTION 8: EXTENSIVE ADMINISTRATIVE INFRASTRUCTURE SUITE
 # ──────────────────────────────────────────────────────────────────────
-
-# 🌟 NEW UPGRADE REGISTER: Admin custom command strings mapping parser to modify the unlimited creation rule blocks text
-@bot.message_handler(commands=['setunlimitedmsg'])
-def admin_set_unlimited_mode_rules_text(message):
-    if message.from_user.id != ADMIN_ID: return
-    try:
-        raw_rules = message.text.replace("/setunlimitedmsg", "").strip()
-        if not raw_rules:
-            bot.send_message(ADMIN_ID, "❌ **Sahi Format:** `/setunlimitedmsg <write all unlimited mode guidelines here>`")
-            return
-        with get_db_connection() as conn:
-            conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('unlimited_rule_msg', ?)", (raw_rules,))
-            conn.commit()
-        bot.send_message(ADMIN_ID, "✅ **Unlimited Gmail Creation Rule Text updated inside database successfully!**")
-    except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ Data Injection Error: {e}")
 
 # LOCK PARSERS: Dynamic operational switches mapping state variables inside configurations database space
 @bot.message_handler(commands=['locksingle'])
@@ -539,6 +525,22 @@ def admin_unlock_unlimited(message):
         conn.commit()
     bot.send_message(ADMIN_ID, "🟢 **Create Unlimited Gmail option has been UNLOCKED successfully!**")
 
+# Admin custom command strings mapping parser to modify the unlimited creation rule blocks text
+@bot.message_handler(commands=['setunlimitedmsg'])
+def admin_set_unlimited_mode_rules_text(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        raw_rules = message.text.replace("/setunlimitedmsg", "").strip()
+        if not raw_rules:
+            bot.send_message(ADMIN_ID, "❌ **Sahi Format:** `/setunlimitedmsg <write all unlimited mode guidelines here>`")
+            return
+        with get_db_connection() as conn:
+            conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('unlimited_rule_msg', ?)", (raw_rules,))
+            conn.commit()
+        bot.send_message(ADMIN_ID, "✅ **Unlimited Gmail Creation Rule Text updated inside database successfully!**")
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ Data Injection Error: {e}")
+
 @bot.message_handler(commands=['ban'])
 def admin_manual_ban(message):
     if message.from_user.id != ADMIN_ID: return
@@ -574,6 +576,105 @@ def admin_manual_unban(message):
         except: pass
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ Error: {e}")
+
+@bot.message_handler(commands=['addreview'])
+def admin_add_single_review_task(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        raw_text = message.text.replace("/addreview", "").strip()
+        if not raw_text or " : " not in raw_text:
+            bot.send_message(ADMIN_ID, "❌ **Format:** `/addreview link : message requirements`")
+            return
+        r_link, r_msg = raw_text.split(" : ", 1)
+        with get_db_connection() as conn:
+            conn.execute("INSERT INTO review_pool (review_link, review_msg, status) VALUES (?, ?, 'AVAILABLE')", (r_link.strip(), r_msg.strip()))
+            conn.commit()
+            count = conn.execute("SELECT COUNT(*) as total FROM review_pool WHERE status = 'AVAILABLE'").fetchone()['total']
+        
+        bot.send_message(ADMIN_ID, f"✅ **Single Review Task Loaded!**\n📦 Total Available Reviews: `{count}`\n📢 *Launching async dynamic user notifications loops...*")
+        auto_review_broadcast_alert(1, count)
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ Data Insertion Fail: {e}")
+
+@bot.message_handler(commands=['bulkaddreview'])
+def admin_bulk_add_review_tasks(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        raw_text = message.text.replace("/bulkaddreview", "").strip()
+        if not raw_text:
+            bot.send_message(ADMIN_ID, "❌ **Format:**\n\n`/bulkaddreview`\n`link1 : message1`\n`link2 : message2`")
+            return
+        lines = raw_text.split("\n")
+        success_count = 0
+        with get_db_connection() as conn:
+            for line in lines:
+                if " : " in line:
+                    try:
+                        r_link, r_msg = line.strip().split(" : ", 1)
+                        conn.execute("INSERT INTO review_pool (review_link, review_msg, status) VALUES (?, ?, 'AVAILABLE')", (r_link.strip(), r_msg.strip()))
+                        success_count += 1
+                    except: pass
+            conn.commit()
+            total_stock = conn.execute("SELECT COUNT(*) as total FROM review_pool WHERE status = 'AVAILABLE'").fetchone()['total']
+        
+        bot.send_message(ADMIN_ID, f"📦 **Bulk Review Import Status:**\n✅ Added Elements: {success_count}\n🔥 Total Live Review Stock: {total_stock}\n📢 *Launching background notification matrix engines...*")
+        if success_count > 0:
+            auto_review_broadcast_alert(success_count, total_stock)
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ Bulk Add Review Error: {e}")
+
+@bot.message_handler(commands=['viewreview'])
+def admin_view_review_stock(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        with get_db_connection() as conn:
+            reviews = conn.execute("SELECT id, review_link FROM review_pool WHERE status = 'AVAILABLE' ORDER BY id ASC LIMIT 20").fetchall()
+            total_available = conn.execute("SELECT COUNT(*) as total FROM review_pool WHERE status = 'AVAILABLE'").fetchone()['total']
+        if not reviews:
+            bot.send_message(ADMIN_ID, "📦 **Review Stock Pool Empty Hai!**")
+            return
+        stock_text = f"🔥 **LIVE AVAILABLE REVIEWS (Total: {total_available})** 🔥\n\n"
+        for r in reviews:
+            stock_text += f"🆔 `ID: {r['id']}`\n🔗 `{r['review_link']}`\n───────────────────\n"
+        bot.send_message(ADMIN_ID, stock_text, parse_mode="Markdown")
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ View Review Error: {e}")
+
+@bot.message_handler(commands=['deletereview'])
+def admin_delete_review_task(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        task_id = message.text.replace("/deletereview", "").strip()
+        if not task_id or not task_id.isdigit():
+            bot.send_message(ADMIN_ID, "❌ **Format:** `/deletereview ID`")
+            return
+        task_id = int(task_id)
+        with get_db_connection() as conn:
+            check = conn.execute("SELECT * FROM review_pool WHERE id = ? AND status = 'AVAILABLE'", (task_id,)).fetchone()
+            if not check:
+                bot.send_message(ADMIN_ID, f"❌ Review ID `{task_id}` stock pool me nahi mili.")
+                return
+            conn.execute("DELETE FROM review_pool WHERE id = ?", (task_id,))
+            conn.commit()
+        bot.send_message(ADMIN_ID, f"🗑️ **Review ID `{task_id}` dropped from live pool successfully!**")
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ Delete Review Error: {e}")
+
+@bot.message_handler(commands=['setreviewreward'])
+def admin_set_review_payout_amount(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        raw_amt = message.text.replace("/setreviewreward", "").strip()
+        if not raw_amt:
+            bot.send_message(ADMIN_ID, "❌ **Format:** `/setreviewreward <numerical digits>`")
+            return
+        reward_float = float(raw_amt)
+        with get_db_connection() as conn:
+            conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('review_reward', ?)", (str(reward_float),))
+            conn.commit()
+        bot.send_message(ADMIN_ID, f"✅ **Review Task Base Payout Updated!**\n💰 Reward Amount: ₹{reward_float}")
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ Data Conversion Error: {e}")
 
 @bot.message_handler(commands=['addbalance'])
 def admin_add_balance(message):
