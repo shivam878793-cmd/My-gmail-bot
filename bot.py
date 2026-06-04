@@ -9,7 +9,7 @@ from telebot import types
 # 🛰️ SECTION 1: SYSTEM IDENTITIES & TELEGRAM GLOBAL VARIABLES
 # ──────────────────────────────────────────────────────────────────────
 
-# UPDATED: New API Token successfully injected as per user explicit instruction
+# Secure master core production string definitions 
 API_TOKEN = '7990556564:AAFeSZb6lh_Ha-ojnRvEONg4zTAfFu8606c'
 ADMIN_ID = 8031127296
 
@@ -210,7 +210,7 @@ def check_and_release_expired_tasks():
     except Exception as expiry_err:
         print(f"Error captured in automatic expiry checker execution: {expiry_err}")
 
-# CRITICAL FIX: Isolated database connections for parallel worker nodes to completely drop lock conflicts
+# Isolated database connections for parallel worker nodes to completely drop lock conflicts
 def broadcast_stock_worker(added_count, current_total):
     """Processes mass notification loops inside a separate standalone thread context safely."""
     try:
@@ -394,11 +394,12 @@ def main_menu():
     return markup
 
 def task_options_menu():
-    """Constructs the primary branching sub-menus for execution loops separation vectors."""
+    """Constructs the primary branching inline parameters with customized pricing format mappings."""
     markup = types.InlineKeyboardMarkup(row_width=1)
+    # UPDATED: Button labels mapped to exactly append custom parameters requested by the user
     markup.add(
-        types.InlineKeyboardButton("📨 1 Gmail Task (10 Min Timer)", callback_data="task_single"),
-        types.InlineKeyboardButton("📦 10x Bulk Gmail Task (60 Min Timer)", callback_data="task_batch")
+        types.InlineKeyboardButton("📨 1 Gmail Task (₹15)", callback_data="task_single"),
+        types.InlineKeyboardButton("📦 10x Bulk Gmail Task (₹20/ea)", callback_data="task_batch")
     )
     return markup
 
@@ -602,7 +603,6 @@ def admin_add_balance(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Error:** {e}")
 
-# ⭐ FIXED: SQLite connection wrapper explicitly isolates inserts to crash dynamic multi-write blockages
 @bot.message_handler(commands=['addtask'])
 def add_task_via_telegram(message):
     if message.from_user.id != ADMIN_ID: return
@@ -622,7 +622,6 @@ def add_task_via_telegram(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Error:** {e}")
 
-# ⭐ FIXED: SQLite loop handles multiple batch insertions without file locking collisions
 @bot.message_handler(commands=['bulkadd'])
 def bulk_add_tasks(message):
     if message.from_user.id != ADMIN_ID: return
@@ -671,7 +670,7 @@ def admin_view_stock_fixed(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **View Stock Error:** {e}")
 
-# ⭐ GHOST STOCK REAPPEARANCE REPAIR LAYER: Solves image 19726.jpg memory cache overlaps cleanly
+# GHOST STOCK REAPPEARANCE REPAIR LAYER
 @bot.message_handler(commands=['deletetask'])
 def admin_delete_task(message):
     if message.from_user.id != ADMIN_ID: return
@@ -774,7 +773,7 @@ def admin_check_user(message):
     except Exception as e: pass
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 9: MASTER TEXT HANDLER ROUTER CIRCUITS
+# 🛰️ SECTION 9: TEXT LOGIC CONTROLLER AND RESOLUTION ROUTERS
 # ──────────────────────────────────────────────────────────────────────
 
 @bot.message_handler(func=lambda msg: True, content_types=['text'])
@@ -799,8 +798,11 @@ def handle_text_messages(message):
         return
         
     if message.text == "📨 Get Gmail Task":
+        # UPDATED: Injected highly specific validation rules as requested by the user explicitly
         info_header = (
             "🚀 **GMAIL TASK RULES & REWARDS** 🚀\n\n"
+            "📌 **Rule: Create Gmail And Select 1990-1999 If You Select 2000 your gmail Rejected And After Paid Payment Logout Gmail In Your phone Don''t Delete Gmail Only Logout**\n\n"
+            "───────────────────\n"
             "📌 **Note: Jo Single Mode se Gmail banayega usko ₹15 milega (10 Min Expiry).**\n"
             "🔥 **Lekin agar aap Bulk Mode me 10x Gmail complete karte hain, toh aapko ₹20/Gmail milega (60 Min Expiry)!**\n\n"
             "👇 **Niche diye gaye options me se apna task option select karein:**"
@@ -845,12 +847,10 @@ def handle_text_messages(message):
         content = res['value'] if res else "📹 **No Tutorial Set by Admin yet.**"
         bot.send_message(message.chat.id, content, parse_mode="Markdown")
         
-    # ⭐ ENHANCED STOCK DRAIN REPAIR GATE: Instant isolation occurs right at user click event!
     elif message.text == "⭐ Review Task":
         with get_db_connection() as conn:
             review = conn.execute("SELECT * FROM review_pool WHERE status = 'AVAILABLE' ORDER BY id ASC LIMIT 1").fetchone()
         
-        # Trigger explicit empty stock notification layout if no items are matched
         if not review:
             bot.send_message(message.chat.id, "⚠️ **No Review Task Available!**\n\n⚡ Pool me filhal koi review task stock nahi hai. Admin jaise hi naye tasks load karenge, aapko notify kar diya jayega yrr!")
             return
@@ -881,7 +881,7 @@ def handle_text_messages(message):
         bot.send_message(message.chat.id, review_dashboard_text, parse_mode="Markdown", reply_markup=markup)
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 10: CASH BALANCE WITHDRAWAL ROUTINES
+# 🛰_ SECTION 10: CASH BALANCE WITHDRAWAL ROUTINES
 # ──────────────────────────────────────────────────────────────────────
 
 def ask_upi_id(message):
@@ -920,7 +920,7 @@ def process_withdrawal_admin_review(message, amount):
     bot.send_message(WITHDRAW_CHANNEL_ID, f"🚨 **NEW WITHDRAWAL PENDING** 🚨\n\n👤 **User ID:** `{user_id}`\n💵 **Amount Deducted:** ₹{amount}\n📱 **UPI ID:** `{upi_id}`\n\nSelect action from panel:", parse_mode="Markdown", reply_markup=wd_markup)
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 11: ASYNCHRONOUS ENGINE HANDLERS (CALLBACK DISPATCH MODULES)
+# 🛰_ SECTION 11: ASYNCHRONOUS ENGINE HANDLERS (CALLBACK DISPATCH MODULES)
 # ──────────────────────────────────────────────────────────────────────
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -961,7 +961,7 @@ def handle_callbacks(call):
 
     if call.data.startswith("rev_"):
         if user_id != ADMIN_ID: return
-        parts = call.data.split("_")
+        parts = call.data.split('_')
         action, target_user, session_id, review_pool_id = parts[1], int(parts[2]), int(parts[3]), int(parts[4])
         
         with get_db_connection() as conn:
@@ -1151,7 +1151,7 @@ def handle_callbacks(call):
         bot.register_next_step_handler(msg, process_final_channel_proof, sid)
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰| SECTION 12: SERVICE POLICE INITIALIZATION POLLING LAYER
+# 🛰️ SECTION 12: SERVICE POLICE INITIALIZATION POLLING LAYER
 # ──────────────────────────────────────────────────────────────────────
 
 print("🚀 PRODUCTION MASTER ENGINE ONLINE: Anti-Lock context mapping verified successfully. Polling live...")
