@@ -23,6 +23,9 @@ bot = telebot.TeleBot(API_TOKEN)
 # System isolation threading lock register instantiation to prevent concurrent memory corruption
 db_thread_lock = threading.Lock()
 
+# NETWORK LATENCY TUNING: Forced loop check bypass variable dictionary register
+user_join_cache = {}
+
 # ──────────────────────────────────────────────────────────────────────
 # 🛰️ SECTION 2: ARCHITECTURE CORE DATABASE DESIGN (WAL PRODUCTION PROTOCOLS)
 # ──────────────────────────────────────────────────────────────────────
@@ -131,6 +134,12 @@ except Exception as db_init_err:
 
 def is_user_joined_all(user_id):
     """Enforces absolute real-time structural lookups across target community endpoints."""
+    # ⚡ CACHE INTELLIGENCE LAYER: Prevents infinite loop loops on heavy traffic hosting pipelines
+    if user_id in user_join_cache:
+        last_check_timestamp, historical_cached_status = user_join_cache[user_id]
+        if time.time() - last_check_timestamp < 900:  # 15 Minutes Cache Expiry Window
+            return historical_cached_status
+
     if user_id == ADMIN_ID:
         return True
     
@@ -139,16 +148,22 @@ def is_user_joined_all(user_id):
             u_chk = conn.execute("SELECT is_banned FROM users WHERE user_id = ?", (user_id,)).fetchone()
     
     if u_chk and u_chk['is_banned'] == 1:
+        user_join_cache[user_id] = (time.time(), False)
         return False
         
+    global_evaluation_flag = True
     for channel in REQUIRED_CHANNELS:
         try:
             member = bot.get_chat_member(channel, user_id)
             if member.status in ['left', 'kicked', 'restricted'] or member.status is None:
-                return False
+                global_evaluation_flag = False
+                break
         except Exception:
-            return False 
-    return True
+            global_evaluation_flag = False
+            break
+
+    user_join_cache[user_id] = (time.time(), global_evaluation_flag)
+    return global_evaluation_flag
 
 def force_join_keyboard():
     """Generates direct secure verification inline links for unauthorized connections."""
@@ -382,6 +397,10 @@ def start_cmd(message):
     """Processes user entrance vectors and handles cookies dynamically."""
     user_id = message.from_user.id
     
+    # Force fresh validation clearing on initialization commands endpoints
+    if user_id in user_join_cache:
+        del user_join_cache[user_id]
+        
     with db_thread_lock:
         with get_db_connection() as conn:
             u_chk = conn.execute("SELECT is_banned FROM users WHERE user_id = ?", (user_id,)).fetchone()
