@@ -111,7 +111,7 @@ def init_db():
 
 2. GMAIL BANTE TIME AGE 1990 SA 1999 KE BECH MA RAKHNA
 
-3. GMAIL PASSWORD NICHE DIYA HU WO RAKHNA WO SAME HOGA SABMA
+3. GMAIL PASSWORD NICHE DIYA HU WO RAKHNA HU WO SAME HOGA SABMA
 
 4. SUBMIT KE BAAD GMAIL DELETE MAT KARNA PAYMENT ANE KE BAAD GMAIL LOG OUT KARDENA DELETE MAT KARNA
 
@@ -758,7 +758,6 @@ def handle_text_messages(message):
         bot.send_message(message.chat.id, invite_text, parse_mode="Markdown")
         
     elif message.text == "💸 Withdraw":
-        # CHANGED WITHDRAW SYSTEM: Initiates the brand new sequential multi-step validation gateway flow
         withdraw_input_prompt = (
             "💸 **WITHDRAWAL PANEL GATEWAY** 💸\n\n"
             "🔢 **Enter You All Approved Gmail Don't Enter Rejected Gmail:**\n\n"
@@ -820,8 +819,23 @@ def ask_withdrawal_upi_id_step(message):
         bot.send_message(message.chat.id, "❌ **INPUT INVALID!** Process aborted yrr.")
         return
         
+    # 🔥 GMAIL FORMAT VERIFICATION REGEX SWITCH: Validates presence of explicit target format maps
+    raw_clean_text = gmail_addresses_payload.strip()
+    split_check_items = [g.strip().lower() for g in raw_clean_text.split(',') if g.strip()]
+    
+    is_all_gmail_valid = True
+    for email_row in split_check_items:
+        if not email_row.endswith("@gmail.com"):
+            is_all_gmail_valid = False
+            break
+            
+    if not is_all_gmail_valid:
+        msg = bot.send_message(message.chat.id, "❌ **FORMAT ERROR!**\n\n⚠️ Aapka bhejey huyen entries me **@gmail.com** nahi mila. Kripya dhyan se sirf valid Gmail address hi enter karein yrr!\n\n👇 Dubara enter karein (E.g. user1@gmail.com, user2@gmail.com):")
+        bot.register_next_step_handler(msg, ask_withdrawal_upi_id_step)
+        return
+        
     msg = bot.send_message(message.chat.id, "📱 **Ab apni Real UPI ID send karein jisme payment chahiye (E.g. username@upi):**")
-    bot.register_next_step_handler(msg, process_withdrawal_admin_review, gmail_addresses_payload.strip())
+    bot.register_next_step_handler(msg, process_withdrawal_admin_review, raw_clean_text)
 
 def process_withdrawal_admin_review(message, gmails_data):
     """Bundles user identities, custom typed gmails list, and verified upi strings safely to forward over to boss panel."""
@@ -832,6 +846,13 @@ def process_withdrawal_admin_review(message, gmails_data):
         bot.send_message(message.chat.id, "❌ **UPI ID cannot be blank!** Operation reset.")
         return
 
+    # 🔥 UPI FORMAT VERIFICATION FILTER: Strictly enforces cross mapping validations strings structure
+    clean_upi_string = upi_id.strip()
+    if "@" not in clean_upi_string:
+        msg = bot.send_message(message.chat.id, "❌ **UPI FORMAT ERROR!**\n\n⚠️ Aapke bhejey huye string me **@** sign nahi mila. Ek valid UPI ID bhejyein yrr!\n\n👇 Dubara UPI bhejyein (E.g. ronaldo@ybl,9988xxxx@paytm):")
+        bot.register_next_step_handler(msg, process_withdrawal_admin_review, gmails_data)
+        return
+
     # Dynamic action parameters matching exact layout coordinates short structures
     wd_markup = types.InlineKeyboardMarkup()
     wd_markup.add(
@@ -839,14 +860,14 @@ def process_withdrawal_admin_review(message, gmails_data):
         types.InlineKeyboardButton("🔴 Reject Payout", callback_data=f"wd_rej_{user_id}")
     )
     
-    success_text = f"✅ **Withdrawal Request Submitted Successfully!**\n\n📋 **Gmail Address Details:**\n`{gmails_data}`\n📱 **UPI ID String:** `{upi_id}`\n\n⚠️ *Aapka application review ke liye bhej diya gaya hai. Checking wait karein yrr!*"
+    success_text = f"✅ **Withdrawal Request Submitted Successfully!**\n\n📋 **Gmail Address Details:**\n`{gmails_data}`\n📱 **UPI ID String:** `{clean_upi_string}`\n\n⚠️ *Aapka application review ke liye bhej diya gaya hai. Checking wait karein yrr!*"
     bot.send_message(message.chat.id, success_text, parse_mode="Markdown")
     
     admin_channel_alert = (
         f"🚨 **NEW SYSTEM WITHDRAWAL APPLICATION** 🚨\n\n"
         f"👤 **User ID:** `{user_id}`\n"
         f"📧 **Submitted Gmails List:**\n`{gmails_data}`\n"
-        f"📱 **Target UPI Wallet Account:** `{upi_id}`\n\n"
+        f"📱 **Target UPI Wallet Account:** `{clean_upi_string}`\n\n"
         f"Select administrative actions parameters below:"
     )
     bot.send_message(WITHDRAW_CHANNEL_ID, admin_channel_alert, parse_mode="Markdown", reply_markup=wd_markup)
@@ -881,7 +902,7 @@ def handle_callbacks(call):
         bot.answer_callback_query(call.id, "❌ Access Blocked! Pehle channels join verify karein.", show_alert=True)
         return
 
-    # 📋 FIXED GMAIL HISTORY MATRIX ENGINE: Triggers instant, reliable, crash-proof full array maps logs lookups
+    # 📋 DYNAMIC SECTIONS MATRIX: Hooked directly here to ensure button click executes perfectly with 100% response metrics
     if call.data == "history_dashboard_loop":
         current_today_date = datetime.date.today().isoformat()
         
@@ -957,7 +978,7 @@ def handle_callbacks(call):
             try: bot.edit_message_caption(response_caption_block, chat_id, call.message.message_id)
             except: bot.edit_message_text(response_caption_block, chat_id, call.message.message_id)
             
-            # CHANGED NOTIFICATION TEXT BLOCK: Replaced old validation metrics with the customized tiers reward text strings logs mapping
+            # CUSTOMIZED SYSTEM NOTIFICATION UPDATE HOOK: Alerts user precisely via custom specified layout guidelines text
             customized_app_alert = (
                 "🎉 **Whhoo Apka Gmail Approve Kardiya Gaya Hai "
                 "Aab Aap Withdraw Ma Jaker Apna All Approved Gmail Send Karke Upi Id Bhaj Submit Karde**"
@@ -983,7 +1004,6 @@ def handle_callbacks(call):
                     conn.execute("UPDATE sessions SET status = 'TAKEN' WHERE id = ?", (session_id,))
                     conn.commit()
                     
-            # TAKEN BUTTON INSULATION MODIFICATION: Preserves the active control coefficients parameters switches keys safely
             keep_markup = types.InlineKeyboardMarkup(row_width=1)
             keep_markup.add(
                 types.InlineKeyboardButton("🟢 Approve Payout", callback_data=f"unl_app_{session_id}_{target_index}"),
@@ -1040,7 +1060,7 @@ def handle_callbacks(call):
                     conn.commit()
             response_text = f"🔴 **Single Task Rejected email: {s_gmail}**\n🆔 **Target User ID Vector:** `{target_user}`"
             bot.edit_message_caption(response_text, chat_id, call.message.message_id)
-            try: bot.send_message(target_user, f"❌ **Apka Gmail Reject ho gaya hai!**\n\n📧 **Gmail ID:** `{s_gmail}`\n⚠️ Layout checklist rules check karein, iska points balance add nahi hua.")
+            try: bot.send_message(target_user, f"❌ **Apka Gmail Reject ho gaya hai!**\n\n📧 **Gmail ID:** `{s_gmail}`\n⚠️ Payout checklist rules check karein, iska points balance add nahi hua.")
             except: pass
             
         elif action_type == "tak":
@@ -1082,7 +1102,6 @@ def handle_callbacks(call):
                     bot.edit_message_caption("🔴 **Review Task Rejected! Status reset to AVAILABLE inside isolated registers.**", chat_id, call.message.message_id)
         return
 
-    # UPDATED WITHDRAW CHANNELS PROCESSOR NODES: Intercepts actions keys to push confirmation alerts directly down down link path arrays
     if call.data.startswith('wd_'):
         if user_id != ADMIN_ID: return
         parts = call.data.split('_')
@@ -1092,7 +1111,7 @@ def handle_callbacks(call):
             try: bot.edit_message_text(f"🟢 **Payout Approved Securely!**\n👤 User Trace ID Vector: `{target_user}`", chat_id, call.message.message_id)
             except: pass
             
-            # CHANGED PAYOUT TEXT ALERT: Triggers customized success validation logs when payout completes smoothly
+            # TRIGGER EXPLICIT CUSTOM SPECIFIED PAYMENT SUCCESS MESSAGE CAPTION LOGS:
             custom_payout_success_notice = "🎉 **apka Payment Apke Upi Wallet ma tranfer kardiya gaya hai**"
             try: bot.send_message(target_user, custom_payout_success_notice, parse_mode="Markdown")
             except: pass
