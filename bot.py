@@ -641,6 +641,7 @@ def admin_set_help_tutorial(message):
             return
         with db_thread_lock:
             with get_db_connection() as conn:
+                # 🔥 FIXED HELP INJECTION: Force secure data overwriting update layout parameters safely
                 conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('tutorial', ?)", (new_content,))
                 conn.commit()
         bot.send_message(ADMIN_ID, "✅ **Help & Tutorial message updated in database successfully!**")
@@ -767,6 +768,7 @@ def handle_text_messages(message):
         bot.register_next_step_handler(msg, ask_withdrawal_upi_id_step)
             
     elif message.text == "📚 Help & Tutorial":
+        # 🔥 FIXED HELP TEXT RETRIEVAL HOOK: Direct parameters database execution mapping lines deployed safely
         with db_thread_lock:
             with get_db_connection() as conn:
                 res = conn.execute("SELECT value FROM settings WHERE key = 'tutorial'").fetchone()
@@ -819,7 +821,6 @@ def ask_withdrawal_upi_id_step(message):
         bot.send_message(message.chat.id, "❌ **INPUT INVALID!** Process aborted yrr.")
         return
         
-    # 🔥 CRITICAL INTERCEPTION UPGRADE: If user hits a main keyboard menu button text, interrupt loop instantly and redirect routing endpoints path
     if gmail_addresses_payload in ["📨 Get Gmail Task", "💰 Wallet", "👥 Invite & Earn", "💸 Withdraw", "📚 Help & Tutorial", "⭐ Review Task"]:
         handle_text_messages(message)
         return
@@ -850,7 +851,6 @@ def process_withdrawal_admin_review(message, gmails_data):
         bot.send_message(message.chat.id, "❌ **UPI ID cannot be blank!** Operation reset.")
         return
 
-    # 🔥 CRITICAL INTERCEPTION UPGRADE: Intercept menu buttons here as well to clear loops instantly on step-2 boundaries
     if upi_id in ["📨 Get Gmail Task", "💰 Wallet", "👥 Invite & Earn", "💸 Withdraw", "📚 Help & Tutorial", "⭐ Review Task"]:
         handle_text_messages(message)
         return
@@ -890,7 +890,7 @@ def handle_callbacks(call):
     user_id = call.from_user.id
     chat_id = call.message.chat.id
 
-    # 🔥 CRITICAL OVERRIDE INTERCEPT BLOCK: History panel response directly hooked at top interface boundaries to prevent lag drops
+    # 🔥 FIXED DYNAMIC GMAIL HISTORY MODULE TRIGGER OVERRIDE: Registered at zero-index position to process instant click triggers crash free
     if call.data == "history_dashboard_loop":
         current_today_date = datetime.date.today().isoformat()
         
