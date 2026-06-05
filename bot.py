@@ -55,7 +55,7 @@ def init_db():
                     is_banned INTEGER DEFAULT 0,
                     refer_reward_paid INTEGER DEFAULT 0
                 )
-            ''');
+            ''')
             
             # Inventory asset tracking registry model for Single Modes
             cursor.execute('''
@@ -67,7 +67,7 @@ def init_db():
                     assigned_at INTEGER DEFAULT NULL,
                     status TEXT DEFAULT 'AVAILABLE'
                 )
-            ''');
+            ''')
             
             # Review and Rating automation tracker dataset matrix
             cursor.execute('''
@@ -79,7 +79,7 @@ def init_db():
                     assigned_at INTEGER DEFAULT NULL,
                     status TEXT DEFAULT 'AVAILABLE'
                 )
-            ''');
+            ''')
             
             # Multi-session dynamic tracker with unified text storage block for unlimited logging
             cursor.execute('''
@@ -91,7 +91,7 @@ def init_db():
                     started_at INTEGER,
                     status TEXT DEFAULT 'PENDING'
                 )
-            ''');
+            ''')
             
             # Internal key-value dynamic variables system registry
             cursor.execute('''
@@ -99,7 +99,7 @@ def init_db():
                     key TEXT PRIMARY KEY,
                     value TEXT
                 )
-            ''');
+            ''')
             
             # Seeding static parameters defaults safely without overwriting old values
             cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('tutorial', '📹 **Help & Tutorial Video:**\n\n[No video link set yet by admin. Use /sethelp to update]')")
@@ -292,11 +292,12 @@ def process_final_channel_proof(message, session_id):
         gmails_list = [g.strip() for g in raw_credentials.split(',') if g.strip()]
         
         for index, s_gmail in enumerate(gmails_list):
+            # CRITICAL ENGINE UPGRADE: Shortened callback data parameters to exactly fit 64-bytes maximum buffer limits
             admin_markup = types.InlineKeyboardMarkup(row_width=1)
             admin_markup.add(
-                types.InlineKeyboardButton("🟢 Approve Payout", callback_data=f"unl_approve_{user_id}_{session_id}_{s_gmail}"),
-                types.InlineKeyboardButton("🔴 Reject Creation", callback_data=f"unl_reject_{user_id}_{session_id}_{s_gmail}"),
-                types.InlineKeyboardButton("🔵 Taken", callback_data=f"unl_taken_{user_id}_{session_id}_{s_gmail}")
+                types.InlineKeyboardButton("🟢 Approve Payout", callback_data=f"unl_app_{session_id}_{index}"),
+                types.InlineKeyboardButton("🔴 Reject Creation", callback_data=f"unl_rej_{session_id}_{index}"),
+                types.InlineKeyboardButton("🔵 Taken", callback_data=f"unl_tak_{session_id}_{index}")
             )
             
             caption_text = (
@@ -336,9 +337,9 @@ def process_final_channel_proof(message, session_id):
         s_gmail_addr = session['task_id_list']
         admin_markup = types.InlineKeyboardMarkup()
         admin_markup.add(
-            types.InlineKeyboardButton("🟢 Approve Single Task", callback_data=f"sgl_approve_{user_id}_{session_id}_{s_gmail_addr}"),
-            types.InlineKeyboardButton("🔴 Reject Single Task", callback_data=f"sgl_reject_{user_id}_{session_id}_{s_gmail_addr}"),
-            types.InlineKeyboardButton("🔵 Taken", callback_data=f"sgl_taken_{user_id}_{session_id}_{s_gmail_addr}")
+            types.InlineKeyboardButton("🟢 Approve Single Task", callback_data=f"sgl_app_{session_id}_0"),
+            types.InlineKeyboardButton("🔴 Reject Single Task", callback_data=f"sgl_rej_{session_id}_0"),
+            types.InlineKeyboardButton("🔵 Taken", callback_data=f"sgl_tak_{session_id}_0")
         )
         caption_text = f"🛰️ **NEW SINGLE GMAIL VALIDATION** 🛰️\n\n📋 **TASK TYPE:** `{task_label}`\n👤 **User ID:** `{user_id}`\n📧 **Gmail:** `{s_gmail_addr}`\n\nSelect action coefficients from blocks panel:"
 
@@ -621,6 +622,25 @@ def admin_delete_task(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Delete Task Error:** {e}")
 
+@bot.message_handler(commands=['edittask'])
+def admin_edit_task(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        raw_text = message.text.replace("/edittask", "").strip()
+        parts = raw_text.split(None, 1)
+        if len(parts) < 2 or ":" not in parts[1]:
+            bot.send_message(ADMIN_ID, "❌ **Format:** `/edittask TASK_ID new_email@gmail.com:new_password`")
+            return
+        task_id = int(parts[0])
+        new_gmail, new_password = parts[1].strip().split(":", 1)
+        with db_thread_lock:
+            with get_db_connection() as conn:
+                conn.execute("UPDATE task_pool SET gmail = ?, password = ? WHERE id = ?", (new_gmail.strip(), new_password.strip(), task_id))
+                conn.commit()
+        bot.send_message(ADMIN_ID, f"📝 **Task ID `{task_id}` details updated successfully in database.**")
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ **Edit Task Error:** {e}")
+
 @bot.message_handler(commands=['sethelp'])
 def admin_set_help_tutorial(message):
     if message.from_user.id != ADMIN_ID: return
@@ -895,77 +915,108 @@ def handle_callbacks(call):
         bot.send_message(chat_id, history_text, parse_mode="Markdown")
         return
 
-    # UNLIMITED MATRIX DISPATCH LABELS
+    # FIXED SHORTENED UNLIMITED MODE DISPATCH DECODER PROTOCOL
     if call.data.startswith("unl_"):
         if call.from_user.id != ADMIN_ID: return
         parts = call.data.split("_")
-        action, target_user, session_id, target_gmail = parts[1], int(parts[2]), int(parts[3]), parts[4]
+        action_type, session_id, target_index = parts[1], int(parts[2]), int(parts[3])
         
-        if action == "approve":
+        with db_thread_lock:
+            with get_db_connection() as conn:
+                session_data = conn.execute("SELECT user_id, task_id_list FROM sessions WHERE id = ?", (session_id,)).fetchone()
+                
+        if not session_data:
+            bot.answer_callback_query(call.id, "❌ Session parameters not found inside persistent stack register!", show_alert=True)
+            return
+            
+        target_user = session_data['user_id']
+        emails_parsed = [e.strip() for e in session_data['task_id_list'].split(',') if e.strip()]
+        
+        if target_index >= len(emails_parsed):
+            bot.answer_callback_query(call.id, "❌ Index tracking misalignment error inside memory array grids!", show_alert=True)
+            return
+            
+        s_gmail = emails_parsed[target_index]
+        
+        if action_type == "app":
             with db_thread_lock:
                 with get_db_connection() as conn:
                     conn.execute("UPDATE users SET balance = balance + 15.0 WHERE user_id = ?", (target_user,))
                     conn.execute("UPDATE users SET completed_single_tasks = completed_single_tasks + 1 WHERE user_id = ?", (target_user,))
                     conn.execute("UPDATE sessions SET status = 'APPROVED' WHERE id = ?", (session_id,))
                     conn.commit()
-            bot.edit_message_caption(f"🟢 **Approved email: {target_gmail}! Paid ₹15.**", chat_id, call.message.message_id)
-            try: bot.send_message(target_user, f"🎉 **UNLIMITED GMAIL APPROVED!**\n\n📧 **Gmail ID:** `{target_gmail}`\n💰 Aapka ye account accept ho gaya hai aur iska point balance credit kar diya gaya hai! 💸")
+            try: bot.edit_message_caption(f"🟢 **Approved email: {s_gmail}! Paid ₹15 value increments.**", chat_id, call.message.message_id)
+            except: bot.edit_message_text(f"🟢 **Approved email: {s_gmail}! Paid ₹15 value increments.**", chat_id, call.message.message_id)
+            try: bot.send_message(target_user, f"🎉 **UNLIMITED GMAIL APPROVED!**\n\n📧 **Gmail ID:** `{s_gmail}`\n💰 Aapka ye account accept ho gaya hai aur iska point balance credit kar diya gaya hai! 💸")
             except: pass
             evaluate_and_release_referral_bonus(target_user)
             
-        elif action == "reject":
+        elif action_type == "rej":
             with db_thread_lock:
                 with get_db_connection() as conn:
                     conn.execute("UPDATE sessions SET status = 'REJECTED' WHERE id = ?", (session_id,))
                     conn.commit()
-            bot.edit_message_caption(f"🔴 **Rejected email: {target_gmail}! Notification sent to user.**", chat_id, call.message.message_id)
-            try: bot.send_message(target_user, f"❌ **Apka Gmail Reject ho gaya hai!**\n\n📧 **Gmail ID:** `{target_gmail}`\n⚠️ Payout credit nahi kiya gaya hai, kripya sahi rules follow karein!")
+            try: bot.edit_message_caption(f"🔴 **Rejected email: {s_gmail}! Notification sent to user.**", chat_id, call.message.message_id)
+            except: bot.edit_message_text(f"🔴 **Rejected email: {s_gmail}! Notification sent to user.**", chat_id, call.message.message_id)
+            try: bot.send_message(target_user, f"❌ **Apka Gmail Reject ho gaya hai!**\n\n📧 **Gmail ID:** `{s_gmail}`\n⚠️ Payout credit nahi kiya gaya hai, kripya sahi rules follow karein!")
             except: pass
             
-        elif action == "taken":
+        elif action_type == "tak":
             with db_thread_lock:
                 with get_db_connection() as conn:
                     conn.execute("UPDATE sessions SET status = 'TAKEN' WHERE id = ?", (session_id,))
                     conn.commit()
-            bot.edit_message_caption(f"🔵 **Taken email: {target_gmail}! Notice sent to user.**", chat_id, call.message.message_id)
-            try: bot.send_message(target_user, f"💼 **STATUS UPDATE: ACCOUNT TAKEN**\n\n📧 **Gmail ID:** `{target_gmail}`\n\nAapka gmail Successfully boss ko submit kardiya gaya hai. Aab Aap Checking ka Wait Kare yrr! ⏳")
+            try: bot.edit_message_caption(f"🔵 **Taken email: {s_gmail}! Notice sent to user.**", chat_id, call.message.message_id)
+            except: bot.edit_message_text(f"🔵 **Taken email: {s_gmail}! Notice sent to user.**", chat_id, call.message.message_id)
+            try: bot.send_message(target_user, f"💼 **STATUS UPDATE: ACCOUNT TAKEN**\n\n📧 **Gmail ID:** `{s_gmail}`\n\nAapka gmail Successfully boss ko submit kardiya gaya hai. Aab Aap Checking ka Wait Kare yrr! ⏳")
             except: pass
         return
 
-    # FIXED SINGLE STOCK DISPATCH CHANNELS
+    # FIXED SHORTENED SINGLE MODE DISPATCH DECODER PROTOCOL
     if call.data.startswith("sgl_"):
         if call.from_user.id != ADMIN_ID: return
         parts = call.data.split("_")
-        action, target_user, session_id, target_gmail = parts[1], int(parts[2]), int(parts[3]), parts[4]
+        action_type, session_id = parts[1], int(parts[2])
         
-        if action == "approve":
+        with db_thread_lock:
+            with get_db_connection() as conn:
+                session_data = conn.execute("SELECT user_id, task_id_list FROM sessions WHERE id = ?", (session_id,)).fetchone()
+                
+        if not session_data:
+            bot.answer_callback_query(call.id, "❌ Session record not found inside arrays stack space!", show_alert=True)
+            return
+            
+        target_user = session_data['user_id']
+        s_gmail = session_data['task_id_list']
+        
+        if action_type == "app":
             with db_thread_lock:
                 with get_db_connection() as conn:
                     conn.execute("UPDATE users SET balance = balance + 15.0 WHERE user_id = ?", (target_user,))
                     conn.execute("UPDATE users SET completed_single_tasks = completed_single_tasks + 1 WHERE user_id = ?", (target_user,))
                     conn.execute("UPDATE sessions SET status = 'APPROVED' WHERE id = ?", (session_id,))
                     conn.commit()
-            bot.edit_message_caption(f"🟢 **Single Task Approved email: {target_gmail}! Paid ₹15.**", chat_id, call.message.message_id)
-            try: bot.send_message(target_user, f"🎉 **SINGLE MODE GMAIL APPROVED!**\n\n📧 **Gmail ID:** `{target_gmail}`\n💰 Aapka task verification accept ho gaya hai! Reward credited! 💸")
+            bot.edit_message_caption(f"🟢 **Single Task Approved email: {s_gmail}! Paid ₹15.**", chat_id, call.message.message_id)
+            try: bot.send_message(target_user, f"🎉 **SINGLE MODE GMAIL APPROVED!**\n\n📧 **Gmail ID:** `{s_gmail}`\n💰 Aapka task verification accept ho gaya hai! Reward credited! 💸")
             except: pass
             evaluate_and_release_referral_bonus(target_user)
             
-        elif action == "reject":
+        elif action_type == "rej":
             with db_thread_lock:
                 with get_db_connection() as conn:
                     conn.execute("UPDATE sessions SET status = 'REJECTED' WHERE id = ?", (session_id,))
                     conn.commit()
-            bot.edit_message_caption(f"🔴 **Single Task Rejected email: {target_gmail}! Warning alerts issued.**", chat_id, call.message.message_id)
-            try: bot.send_message(target_user, f"❌ **Apka Gmail Reject ho gaya hai!**\n\n📧 **Gmail ID:** `{target_gmail}`\n⚠️ Layout checklist rules check karein, iska points balance add nahi hua.")
+            bot.edit_message_caption(f"🔴 **Single Task Rejected email: {s_gmail}! Warning alerts issued.**", chat_id, call.message.message_id)
+            try: bot.send_message(target_user, f"❌ **Apka Gmail Reject ho gaya hai!**\n\n📧 **Gmail ID:** `{s_gmail}`\n⚠️ Layout checklist rules check karein, iska points balance add nahi hua.")
             except: pass
             
-        elif action == "taken":
+        elif action_type == "tak":
             with db_thread_lock:
                 with get_db_connection() as conn:
                     conn.execute("UPDATE sessions SET status = 'TAKEN' WHERE id = ?", (session_id,))
                     conn.commit()
-            bot.edit_message_caption(f"🔵 **Single Task Taken email: {target_gmail}! Pending checks notice sent.**", chat_id, call.message.message_id)
-            try: bot.send_message(target_user, f"💼 **STATUS UPDATE: ACCOUNT TAKEN**\n\n📧 **Gmail ID:** `{target_gmail}`\n\nAapka gmail Successfully boss ko submit kardiya gaya hai. Aab Aap Checking ka Wait Kare yrr! ⏳")
+            bot.edit_message_caption(f"🔵 **Single Task Taken email: {s_gmail}! Pending checks notice sent.**", chat_id, call.message.message_id)
+            try: bot.send_message(target_user, f"💼 **STATUS UPDATE: ACCOUNT TAKEN**\n\n📧 **Gmail ID:** `{s_gmail}`\n\nAapka gmail Successfully boss ko submit kardiya gaya hai. Aab Aap Checking ka Wait Kare yrr! ⏳")
             except: pass
         return
 
@@ -1079,30 +1130,28 @@ def handle_callbacks(call):
 
     elif call.data.startswith("cancel_"):
         sid = int(call.data.split('_')[1])
-        with db_thread_lock:
-            with get_db_connection() as conn:
-                session = conn.execute("SELECT * FROM sessions WHERE id = ?", (sid,)).fetchone()
-                if session:
-                    if session['task_type'] == 'SINGLE':
-                        # FIX LOGIC: UPGRADED TO RELEASE STOCK TO INVENTORY POOL UPON NORMAL MANUALLY DEPLOYED CANCELLATIONS
-                        with get_db_connection() as conn_release:
-                            conn_release.execute("UPDATE task_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE gmail = ?", (session['task_id_list'],))
-                            conn_release.commit()
+        with get_db_connection() as conn:
+            session = conn.execute("SELECT * FROM sessions WHERE id = ?", (sid,)).fetchone()
+            if session:
+                if session['task_type'] == 'SINGLE':
+                    with get_db_connection() as conn_release:
+                        conn_release.execute("UPDATE task_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE gmail = ?", (session['task_id_list'],))
+                        conn_release.commit()
+                
+                conn.execute("DELETE FROM sessions WHERE id = ?", (sid,))
+                if session['task_type'] not in ['REVIEW_TASK', 'UNLIMITED_MODE']:
+                    conn.execute("UPDATE users SET cancel_count = cancel_count + 1 WHERE user_id = ?", (user_id,))
+                    conn.commit()
+                    u_update = conn.execute("SELECT cancel_count FROM users WHERE user_id = ?", (user_id,)).fetchone()
                     
-                    conn.execute("DELETE FROM sessions WHERE id = ?", (sid,))
-                    if session['task_type'] not in ['REVIEW_TASK', 'UNLIMITED_MODE']:
-                        conn.execute("UPDATE users SET cancel_count = cancel_count + 1 WHERE user_id = ?", (user_id,))
+                    if u_update and u_update['cancel_count'] > 3:
+                        conn.execute("UPDATE users SET is_banned = 1 WHERE user_id = ?", (user_id,))
                         conn.commit()
-                        u_update = conn.execute("SELECT cancel_count FROM users WHERE user_id = ?", (user_id,)).fetchone()
-                        
-                        if u_update and u_update['cancel_count'] > 3:
-                            conn.execute("UPDATE users SET is_banned = 1 WHERE user_id = ?", (user_id,))
-                            conn.commit()
-                            try: bot.edit_message_text("❌ **Aapka account baar-baar task cancel karne ke karan BAN kar diya gaya hai!**", chat_id, call.message.message_id)
-                            except: pass
-                            return
-                    else:
-                        conn.commit()
+                        try: bot.edit_message_text("❌ **Aapka account baar-baar task cancel karne ke karan BAN kar diya gaya hai!**", chat_id, call.message.message_id)
+                        except: pass
+                        return
+                else:
+                    conn.commit()
 
         bot.edit_message_text("❌ **Task Cancelled successfully and state released safely out of layers!**", chat_id, call.message.message_id)
 
@@ -1141,11 +1190,12 @@ def check_unlimited_batch_inputs_count(message):
                 conn.commit()
                 
         for index, b_gmail in enumerate(evaluated_gmails):
+            # FIXED BY USING INDEX STRINGS MATRIX LOOKUPS FOR CRASH FREE CHANNELS CAPACITIES 
             admin_markup = types.InlineKeyboardMarkup(row_width=1)
             admin_markup.add(
-                types.InlineKeyboardButton("🟢 Approve Payout", callback_data=f"unl_approve_{user_id}_{sid}_{b_gmail}"),
-                types.InlineKeyboardButton("🔴 Reject Creation", callback_data=f"unl_reject_{user_id}_{sid}_{b_gmail}"),
-                types.InlineKeyboardButton("🔵 Taken", callback_data=f"unl_taken_{user_id}_{sid}_{b_gmail}")
+                types.InlineKeyboardButton("🟢 Approve Payout", callback_data=f"unl_app_{sid}_{index}"),
+                types.InlineKeyboardButton("🔴 Reject Creation", callback_data=f"unl_rej_{sid}_{index}"),
+                types.InlineKeyboardButton("🔵 Taken", callback_data=f"unl_tak_{sid}_{index}")
             )
             
             caption_text = (
@@ -1174,8 +1224,8 @@ def capture_unlimited_text_credentials(message):
     pass
 
 # ──────────────────────────────────────────────────────────────────────
-# 🛰️ SECTION 12: RELIABLE INFINITY POLLING INITIALIZATION
+# 🛰️ SECTION 12: RELIABLE INFINITY POLLING PRODUCTION SUITE
 # ──────────────────────────────────────────────────────────────────────
 
-print("🚀 PRODUCTION MASTER ENGINE ONLINE: All multi-threading race bugs and inventory drop errors fixed completely. Polling live...")
+print("🚀 PRODUCTION MASTER ENGINE ONLINE: All button character length limits fixed and locked. Polling live...")
 bot.infinity_polling()
