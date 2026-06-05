@@ -360,17 +360,10 @@ def process_final_channel_proof(message, session_id):
 def main_menu():
     """Generates the absolute responsive system interface keyboard layout mapping."""
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    btn1 = types.KeyboardButton("📨 Get Gmail Task")
-    btn2 = types.KeyboardButton("💰 Wallet")
-    btn3 = types.KeyboardButton("👥 Invite & Earn")
-    btn4 = types.KeyboardButton("💸 Withdraw")
-    btn5 = types.KeyboardButton("📚 Help & Tutorial")
-    btn6 = types.KeyboardButton("⭐ Review Task") 
-    
-    markup.add(btn1)
-    markup.add(btn2, btn3)
-    markup.add(btn4, btn5)
-    markup.add(btn6)
+    markup.add(types.KeyboardButton("📨 Get Gmail Task"))
+    markup.add(types.KeyboardButton("💰 Wallet"), types.KeyboardButton("👥 Invite & Earn"))
+    markup.add(types.KeyboardButton("💸 Withdraw"), types.KeyboardButton("📚 Help & Tutorial"))
+    markup.add(types.KeyboardButton("⭐ Review Task"))
     return markup
 
 def task_options_menu():
@@ -648,6 +641,20 @@ def admin_delete_task(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Delete Task Error:** {e}")
 
+@bot.message_handler(commands=['checkuser'])
+def admin_check_user(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        target_uid = message.text.replace("/checkuser", "").strip()
+        if not target_uid or not target_uid.isdigit(): return
+        target_uid = int(target_uid)
+        with db_thread_lock:
+            with get_db_connection() as conn:
+                user = conn.execute("SELECT * FROM users WHERE user_id = ?", (target_uid,)).fetchone()
+        if user:
+            bot.send_message(ADMIN_ID, f"🔍 **User Info:**\n👤 ID: `{target_uid}`\n💰 Balance: ₹{user['balance']}\n✅ Completed: {user['completed_single_tasks']}\n⚠️ Cancel Rows: {user['cancel_count']}\n🚫 Ban Status: {user['is_banned']}")
+    except Exception as e: pass
+
 # ──────────────────────────────────────────────────────────────────────
 # 🛰️ SECTION 9: INTERACTIVE GRAPHICAL CORE CONTROLLER LOGIC
 # ──────────────────────────────────────────────────────────────────────
@@ -720,7 +727,6 @@ def handle_text_messages(message):
         bot.register_next_step_handler(msg, ask_withdrawal_upi_id_step)
             
     elif message.text == "📚 Help & Tutorial":
-        # 🔥 FIXED DATABASE RETRIEVAL PATH WAY LAYER: Fetches fresh settings parameters instantly 
         with db_thread_lock:
             with get_db_connection() as conn:
                 res = conn.execute("SELECT value FROM settings WHERE key = 'tutorial'").fetchone()
@@ -842,7 +848,7 @@ def handle_callbacks(call):
     user_id = call.from_user.id
     chat_id = call.message.chat.id
 
-    # 🔥 FIXED DYNAMIC GMAIL HISTORY MODULE TRIGGER OVERRIDE: Registered at top index position to bypass any parsing block errors
+    # 🔥 HOT-PATCH RE-ROUTE INTEGRATION: Intercept history click event immediately at absolute top level structure boundaries
     if call.data == "history_dashboard_loop":
         current_today_date = datetime.date.today().isoformat()
         
@@ -1231,7 +1237,7 @@ def check_unlimited_batch_inputs_count(message):
             caption_text = (
                 f"🛰️ **NEW MULTI-BATCH UNLIMITED SUBMISSION ({index+1}/{len(evaluated_gmails)})** 🛰️\n\n"
                 f"📋 **TASK TYPE:** `♾️ [UNLIMITED BATCH ENGINE]`\n"
-                f"👤 **User ID:** `{user_id}`\n\n"
+                f"👤 **User ID:** `{user_id}`\n"
                 f"📋 **TARGET EMAIL SPECIFICATION:**\n`{b_gmail}`\n\n"
                 f"⚡ *[NO SCREENSHOT PROOF REQUIRED FOR EXTENDED MULTI-BATCH ITEMS]*"
             )
