@@ -9,20 +9,15 @@ from telebot import types
 # 🛰️ SECTION 1: SYSTEM IDENTITIES & TELEGRAM GLOBAL VARIABLES
 # ──────────────────────────────────────────────────────────────────────
 
-# Secure master core production string definitions 
 API_TOKEN = '7990556564:AAFeSZb6lh_Ha-ojnRvEONg4zTAfFu8606c'
 ADMIN_ID = 8031127296
 
-# Telegram Routing Endpoint Coordinates Mapping
 GMAIL_CHANNEL_ID = -1003955255909
 WITHDRAW_CHANNEL_ID = -1004208044139
 
-# Mandatory Anti-Drain Verification Nodes Channels List
 REQUIRED_CHANNELS = ["@Raka_Works", "@RakaXproof", "@BilibiliWorks"] 
 
 bot = telebot.TeleBot(API_TOKEN)
-
-# System isolation threading lock register instantiation to prevent data state racing and drop-outs
 db_thread_lock = threading.Lock()
 
 # ──────────────────────────────────────────────────────────────────────
@@ -43,7 +38,6 @@ def init_db():
             cursor.execute('PRAGMA journal_mode=WAL;')
             cursor.execute('PRAGMA synchronous=NORMAL;')
             
-            # Master structure execution blocks mapping user metadata configurations
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS users (
                     user_id INTEGER PRIMARY KEY,
@@ -67,7 +61,6 @@ def init_db():
                 )
             ''')
             
-            # Review Task Storage System Schema Layout Model
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS review_pool (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,7 +83,6 @@ def init_db():
                 )
             ''')
             
-            # User History Structural Logging Layer Mapped Explicitly
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS user_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -108,7 +100,6 @@ def init_db():
                 )
             ''')
             
-            # Seed static parameters defaults if records do not exist
             cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('tutorial', '📹 **Help & Tutorial Video:**\\n\\n[No video link set yet by admin. Use /sethelp to update]')")
             cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('review_reward', '5.0')")
             cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('single_reward', '15.0')")
@@ -118,7 +109,6 @@ def init_db():
             cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('lock_single_mode', 'UNLOCK')")
             cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('lock_unlimited_mode', 'UNLOCK')")
             
-            # SOLID FIXED LAYER: Swapped 'INSERT OR REPLACE' with robust 'INSERT OR IGNORE' to freeze database data loss crashes completely
             cursor.execute("""INSERT OR IGNORE INTO settings (key, value) VALUES ('unlimited_rule_msg', 'RULE GMAIL NAME ME NHI DUGA KHUD BANANA HAI
 
 1. GMAIL NAME REAL TYPE HONA CHAYEA KISI KA NAME KUCH BHI MAT LIKH DENA
@@ -142,7 +132,6 @@ except Exception as db_init_err:
 # ──────────────────────────────────────────────────────────────────────
 
 def is_user_joined_all(user_id):
-    """Enforces rigorous structural lookups across external channel states before responding."""
     if user_id == ADMIN_ID:
         return True
     
@@ -163,7 +152,6 @@ def is_user_joined_all(user_id):
     return True
 
 def force_join_keyboard():
-    """Generates immediate target coordinate links for non-compliant subscriber logs."""
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
         types.InlineKeyboardButton("📢 Join @Raka_Works", url=f"https://t.me/{REQUIRED_CHANNELS[0].replace('@','')}"),
@@ -178,7 +166,6 @@ def force_join_keyboard():
 # ──────────────────────────────────────────────────────────────────────
 
 def register_user(user_id, referrer_id=None):
-    """Saves non-existing dynamic elements to database system instantly during initial handshakes."""
     try:
         with db_thread_lock:
             with get_db_connection() as conn:
@@ -188,10 +175,9 @@ def register_user(user_id, referrer_id=None):
                     cursor.execute("INSERT INTO users (user_id, referred_by, balance, completed_single_tasks, cancel_count, is_banned, refer_reward_paid) VALUES (?, ?, 0.0, 0, 0, 0, 0)", (user_id, referrer_id,))
                     conn.commit()
     except Exception as reg_err:
-        print(f"Error captured in register_user flow execution maps: {reg_err}")
+        print(f"Error captured in register_user: {reg_err}")
 
 def check_and_release_expired_tasks():
-    """Releases locked stock based on rules. Protects UNLIMITED_MULTI from being automatically wiped out."""
     try:
         with db_thread_lock:
             with get_db_connection() as conn:
@@ -209,7 +195,6 @@ def check_and_release_expired_tasks():
                     started = session['started_at']
                     
                     is_expired = False
-                    
                     if t_type == 'REVIEW_TASK':
                         continue
                     elif t_type in ['UNLIMITED_MODE', 'UNLIMITED_PREVIEW', 'UNLIMITED_MULTI']:
@@ -226,15 +211,14 @@ def check_and_release_expired_tasks():
                         
                         cursor.execute("DELETE FROM sessions WHERE id = ?", (sid,))
                         try:
-                            bot.send_message(uid, f"⏰ **TIME OUT ALERT!**\n\n⚠️ Aapne **10 minute** ke andar task poora karke submit nahi kiya.\n❌ Isliye aapka Single task automatically database pool se destroy ho gaya hai!")
+                            bot.send_message(uid, f"⏰ **TIME OUT ALERT!**\n\n⚠️ Aapne **10 minute** ke andar task poora karke submit nahi kiya.\n❌ Isliye aapka task automatically destroy ho gaya hai!")
                         except:
                             pass
                 conn.commit()
     except Exception as expiry_err:
-        print(f"Error captured in automatic expiry checker execution: {expiry_err}")
+        print(f"Error in automatic expiry checker: {expiry_err}")
 
 def broadcast_stock_worker(added_count, current_total):
-    """Processes mass notification loops inside a separate standalone thread context safely."""
     try:
         with db_thread_lock:
             with get_db_connection() as conn:
@@ -245,7 +229,7 @@ def broadcast_stock_worker(added_count, current_total):
             "🔥 **FRESH GMAIL STOCK ADDED!** 🔥\n\n"
             f"📨 **Admin ne abhi naye {added_count} Gmail Tasks update kiye hain!**\n"
             f"📦 **Total Live Stock Available:** `{current_total}` Gmails\n\n"
-            "💰 Jaldi aao, apna task claim karo aur unlimited earning shuru karo yrr! 🚀"
+            "💰 Jaldi aao, apna task claim karo aur earning shuru karo yrr! 🚀"
         )
         count = 0
         for uid in user_list:
@@ -259,12 +243,10 @@ def broadcast_stock_worker(added_count, current_total):
         print(f"Background thread runtime loop failure log: {e}")
 
 def auto_stock_broadcast_alert(added_count, current_total):
-    """Dispatches asynchronous alerts across background execution matrices."""
     thr = threading.Thread(target=broadcast_stock_worker, args=(added_count, current_total))
     thr.start()
 
 def evaluate_and_release_referral_bonus(target_user_id):
-    """Scans historical confirmation indices to credit upline structures automatically upon two successful tasks validation checks."""
     try:
         with db_thread_lock:
             with get_db_connection() as conn:
@@ -286,14 +268,13 @@ def evaluate_and_release_referral_bonus(target_user_id):
                             bot.send_message(upline_id, notification_string, parse_mode="Markdown")
                         except: pass
     except Exception as ref_pipeline_err:
-        print(f"Failure inside referral transaction calculation handlers loops: {ref_pipeline_err}")
+        print(f"Failure inside referral bonus logic: {ref_pipeline_err}")
 
 # ──────────────────────────────────────────────────────────────────────
 # 🛰️ SECTION 5: ADVANCED ADJUDICATION & AUDIT PIPELINE ENGINE
 # ──────────────────────────────────────────────────────────────────────
 
 def process_final_channel_proof(message, session_id):
-    """Processes verification screenshots and attaches live trace links to the admin audit panel."""
     if not message.photo:
         bot.send_message(message.chat.id, "❌ **SUBMISSION ERROR!**\n\n⚠️ Proof verification ke liye sirf Photo/Screenshot format hi bhejni hogi. Process reset.")
         return
@@ -343,7 +324,6 @@ def process_final_channel_proof(message, session_id):
         task_label = "♾️ [UNLIMITED SINGLE CREATION PROOF]"
         raw_credentials = session['task_id_list']
         
-        # Save track inside dynamic user history registers immediately
         with db_thread_lock:
             with get_db_connection() as conn:
                 conn.execute("INSERT INTO user_history (user_id, gmail, task_type, status) VALUES (?, ?, 'UNLIMITED', 'PENDING')", (user_id, raw_credentials))
@@ -361,8 +341,7 @@ def process_final_channel_proof(message, session_id):
             f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n"
             f"📋 **TASK TYPE:** `{task_label}`\n"
             f"👤 **User ID:** `{user_id}`\n\n"
-            f"📋 **SUBMITTED GMAIL CHARACTERISTICS:**\n`{raw_credentials}`\n\n"
-            f"⚠️ **Admin Audit:** Check details inside image layout and resolve:"
+            f"📋 **SUBMITTED GMAIL:**\n`{raw_credentials}`"
         )
         
     else:
@@ -375,7 +354,6 @@ def process_final_channel_proof(message, session_id):
                     if t_row: target_gmail = t_row['gmail']
         except: pass
         
-        # Save track inside dynamic user history registers immediately
         with db_thread_lock:
             with get_db_connection() as conn:
                 conn.execute("INSERT INTO user_history (user_id, gmail, task_type, status) VALUES (?, ?, 'SINGLE', 'PENDING')", (user_id, target_gmail))
@@ -388,20 +366,13 @@ def process_final_channel_proof(message, session_id):
             types.InlineKeyboardButton("🟢 Approve", callback_data=f"sng_approve_{session_id}_{h_id}"),
             types.InlineKeyboardButton("🔴 Reject", callback_data=f"sng_reject_{session_id}_{h_id}")
         )
-        caption_text = f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n📋 **TASK TYPE:** `{task_label}`\n👤 **User ID:** `{user_id}`\n📧 **Gmail:** `{target_gmail}`\n\nAdmin resolve parameters from panel below to verify:"
+        caption_text = f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n📋 **TASK TYPE:** `{task_label}`\n👤 **User ID:** `{user_id}`\n📧 **Gmail:** `{target_gmail}`"
 
-    bot.send_photo(
-        GMAIL_CHANNEL_ID,
-        file_id,
-        caption=caption_text,
-        reply_markup=admin_markup,
-        parse_mode="Markdown"
-    )
-    bot.send_message(message.chat.id, "⏳ **Proof uploaded successfully! Aapka screenshot direct audit channel validation panel me bhej diya gaya hai. Next task turant shuru kar sakte hain!** 🎉")
+    bot.send_photo(GMAIL_CHANNEL_ID, file_id, caption=caption_text, reply_markup=admin_markup, parse_mode="Markdown")
+    bot.send_message(message.chat.id, "⏳ **Proof uploaded successfully! Aapka screenshot direct audit channel validation panel me bhej diya gaya hai.** 🎉")
 
 @bot.message_handler(content_types=['photo'])
 def catch_global_photo_proofs(message):
-    """Validates real-time packet transmissions to block unauthorized data routing injections."""
     user_id = message.from_user.id
     
     with db_thread_lock:
@@ -423,14 +394,13 @@ def catch_global_photo_proofs(message):
     if session:
         process_final_channel_proof(message, session['id'])
     else:
-        bot.send_message(message.chat.id, "❌ **SUBMISSION DENIED!**\n\nAapka koi bhi active locked task background pool me nahi mila. Pehle task uthayein!")
+        bot.send_message(message.chat.id, "❌ **SUBMISSION DENIED!** Aapka koi bhi active locked task background pool me nahi mila.")
 
 # ──────────────────────────────────────────────────────────────────────
 # 🛰️ SECTION 6: HIGH-FIDELITY USER EXPERIENCE INTERACTION GRAPHICS
 # ──────────────────────────────────────────────────────────────────────
 
 def main_menu():
-    """Generates the absolute responsive interface menu parameters mapped directly into standard devices."""
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     btn1 = types.KeyboardButton("📨 Get Gmail Task")
     btn2 = types.KeyboardButton("💰 Wallet")
@@ -446,7 +416,6 @@ def main_menu():
     return markup
 
 def task_options_menu():
-    """Constructs the primary branching inline parameters supporting 3 options explicitly."""
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
         types.InlineKeyboardButton("📨 1 Gmail Task (₹15)", callback_data="task_single"),
@@ -461,7 +430,6 @@ def task_options_menu():
 
 @bot.message_handler(commands=['start'])
 def start_cmd(message):
-    """Processes initial entrance steps and binds unique affiliate cookies dynamically."""
     user_id = message.from_user.id
     
     with db_thread_lock:
@@ -469,7 +437,7 @@ def start_cmd(message):
             u_chk = conn.execute("SELECT is_banned FROM users WHERE user_id = ?", (user_id,)).fetchone()
         
     if u_chk and u_chk['is_banned'] == 1:
-        bot.send_message(message.chat.id, "❌ **Aapka account admin dwara permanently block/ban kar diya gaya hai.**")
+        bot.send_message(message.chat.id, "❌ **Aapka account permanently block/ban kar diya gaya hai.**")
         return
         
     text = message.text.split()
@@ -484,14 +452,14 @@ def start_cmd(message):
     if not is_user_joined_all(user_id):
         bot.send_message(
             message.chat.id, 
-            "⚠️ **MANDATORY CHANNELS JOIN REQUIRED!**\n\n🚀 Bot ko activate karne ke liye aapko hamare **3 Channels** join karna zaroori hai.\n\n👇 Niche diye gaye buttons se jaldi join karein aur phir **Joined** button dabaayein!",
+            "⚠️ **MANDATORY CHANNELS JOIN REQUIRED!**\n\n🚀 Bot ko activate karne ke liye aapko hamare **3 Channels** join karna zaroori hai.",
             reply_markup=force_join_keyboard()
         )
         return
 
     bot.send_message(
         message.chat.id,
-        "👋 **WELCOME TO GMAIL TASK BOT!**\n\n⚡ Yahan aap daily simple Gmail create karne ka kaam karke bohot achhi earning kar sakte hain.\n\n👇 Niche diye buttons se apna kaam shuru karein aur paise kamayein!", 
+        "👋 **WELCOME TO GMAIL TASK BOT!**\n\n👇 Niche diye buttons se apna kaam shuru karne ke liye path chuney aur paise kamayein!", 
         reply_markup=main_menu()
     )
 
@@ -508,7 +476,7 @@ def admin_set_history_extra_msg(message):
             with get_db_connection() as conn:
                 conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('history_extra_msg', ?)", (raw_msg,))
                 conn.commit()
-        bot.send_message(ADMIN_ID, "✅ **Bande ke Gmail History page ka extra message updated inside database successfully!**")
+        bot.send_message(ADMIN_ID, "✅ **Bande ke Gmail History page ka extra message updated successfully!**")
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ Error: {e}")
 
@@ -518,7 +486,7 @@ def admin_set_unlimited_mode_rules_text(message):
     try:
         raw_rules = message.text.replace("/setunlimitedmsg", "").strip()
         if not raw_rules:
-            bot.send_message(ADMIN_ID, "❌ **Sahi Format:** `/setunlimitedmsg <write all unlimited mode guidelines here>`")
+            bot.send_message(ADMIN_ID, "❌ **Sahi Format:** `/setunlimitedmsg <guidelines>`")
             return
         with db_thread_lock:
             with get_db_connection() as conn:
@@ -620,7 +588,7 @@ def admin_add_balance(message):
                 conn.commit()
                 new_bal = conn.execute("SELECT balance FROM users WHERE user_id = ?", (target_uid,)).fetchone()['balance']
         bot.send_message(ADMIN_ID, f"✅ **Balance Added Successfully!**\n👤 User: `{target_uid}`\n💰 New Balance: ₹{new_bal}")
-        try: bot.send_message(target_uid, f"🎁 **BONUS RECEIVED!**\n\nAdmin ne aapke wallet me **Extra ₹{amount}** credit kiye hain! 🎉\n💰 **Current Balance:** ₹{new_bal}")
+        try: bot.send_message(target_uid, f"🎁 **BONUS RECEIVED!**\n\nAdmin ne aapke wallet me **Extra ₹{amount}** credit kiye hain! 🎉")
         except: pass
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Error:** {e}")
@@ -640,7 +608,7 @@ def add_task_via_telegram(message):
                 conn.commit()
                 count = conn.execute("SELECT COUNT(*) as total FROM task_pool WHERE status = 'AVAILABLE'").fetchone()['total']
         
-        bot.send_message(ADMIN_ID, f"✅ **Single Task Added Successfully!**\n📦 Current Available Stock: {count} Gmails\n📢 *All users background alert maps processed safely!*")
+        bot.send_message(ADMIN_ID, f"✅ **Single Task Added Successfully!**\n📦 Current Available Stock: {count} Gmails")
         auto_stock_broadcast_alert(1, count)
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Error:** {e}")
@@ -651,7 +619,7 @@ def bulk_add_tasks(message):
     try:
         raw_text = message.text.replace("/bulkadd", "").strip()
         if not raw_text:
-            bot.send_message(ADMIN_ID, "❌ **Format:**\n\n`/bulkadd`\n`email1:pass1`\n`email2:pass2`")
+            bot.send_message(ADMIN_ID, "❌ **Format:**\n\n`/bulkadd`\n`email1:pass1`")
             return
         lines = raw_text.split("\n")
         success_count = 0
@@ -667,7 +635,7 @@ def bulk_add_tasks(message):
                 conn.commit()
                 total_stock = conn.execute("SELECT COUNT(*) as total FROM task_pool WHERE status = 'AVAILABLE'").fetchone()['total']
         
-        bot.send_message(ADMIN_ID, f"📦 **Bulk Import Status:**\n✅ Added: {success_count}\n🔥 Total Live Stock: {total_stock}\n📢 *All users background threads executed smoothly!*")
+        bot.send_message(ADMIN_ID, f"📦 **Bulk Import Status:**\n✅ Added: {success_count}\n🔥 Total Live Stock: {total_stock}")
         if success_count > 0:
             auto_stock_broadcast_alert(success_count, total_stock)
     except Exception as e:
@@ -683,7 +651,7 @@ def admin_view_stock_fixed(message):
                 total_available = conn.execute("SELECT COUNT(*) as total FROM task_pool WHERE status = 'AVAILABLE'").fetchone()['total']
         
         if not stock_tasks:
-            bot.send_message(ADMIN_ID, "📦 **Stock Empty Hai!** Database pool me koi bhi live task nahi mila.")
+            bot.send_message(ADMIN_ID, "📦 **Stock Empty Hai!**")
             return
             
         stock_text = f"🔥 **LIVE AVAILABLE STOCK LIST (Total: {total_available})** 🔥\n\n"
@@ -706,7 +674,7 @@ def admin_delete_task(message):
             with get_db_connection() as conn:
                 conn.execute("DELETE FROM task_pool WHERE id = ?", (task_id,))
                 conn.commit()
-        bot.send_message(ADMIN_ID, f"🗑️ **Stock Se Deleted!**\n🆔 Task ID: `{task_id}` has been dropped from live pool forever.")
+        bot.send_message(ADMIN_ID, f"🗑️ **Stock Se Deleted!** Task ID: `{task_id}` has been dropped from live pool forever.")
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Delete Task Error:** {e}")
 
@@ -724,7 +692,7 @@ def admin_broadcast_flexible(message):
         
         count = 0
         failed_count = 0
-        status_msg = bot.send_message(ADMIN_ID, f"📢 **Broadcast Shuru Ho Gaya Hai...**\nTotal Users in DB: {len(users)}")
+        status_msg = bot.send_message(ADMIN_ID, f"📢 **Broadcast Shuru...**")
         
         for u in users:
             try:
@@ -737,7 +705,7 @@ def admin_broadcast_flexible(message):
         bot.edit_message_text(
             chat_id=ADMIN_ID,
             message_id=status_msg.message_id,
-            text=f"📢 **Broadcast Complete Successfully!**\n\n✅ **Delivered To:** `{count}` users\n❌ **Failed/Blocked:** `{failed_count}` users",
+            text=f"📢 **Broadcast Complete!**\n\n✅ **Delivered To:** `{count}` users\n❌ **Failed/Blocked:** `{failed_count}` users",
             parse_mode="Markdown"
         )
     except Exception as e:
@@ -749,7 +717,6 @@ def admin_broadcast_flexible(message):
 
 @bot.message_handler(func=lambda msg: True, content_types=['text'])
 def handle_text_messages(message):
-    """Processes user operations and ensures data streams flow to correct pipeline endpoints."""
     user_id = message.from_user.id
     
     with db_thread_lock:
@@ -764,7 +731,7 @@ def handle_text_messages(message):
     if not is_user_joined_all(user_id):
         bot.send_message(
             message.chat.id, 
-            "❌ **ACCESS DENIED!**\n\n⚠️ Aapne hamare mandatory channels left kar diye hain.\n🚀 Bot ko wapas use karne ke liye niche diye channels ko join karein!",
+            "❌ **ACCESS DENIED!**\n\n⚠️ Aapne hamare mandatory channels left kar diye hain.",
             reply_markup=force_join_keyboard()
         )
         return
@@ -796,8 +763,6 @@ def handle_text_messages(message):
         invite_link = f"https://t.me/{bot_info.username}?start={user_id}"
         invite_text = (
             "👥 **INVITE & EARN PROGRAM** 👥\n\n"
-            "🎁 Apne doston ko bot share karein aur unlimited cash kamayein!\n"
-            "💰 **Per Successful Refer:** Aapko instant **₹1** cash reward tab milega jab jisko refer kiya hai wo banda kam se kam **2 Tasks complete** karega! 🤝\n\n"
             f"🔗 **Aapka unique referral link ye raha:**\n`{invite_link}`\n\n"
             "📈 Ise copy karein aur WhatsApp/Telegram par share karein!"
         )
@@ -812,7 +777,7 @@ def handle_text_messages(message):
             msg = bot.send_message(message.chat.id, f"💳 **CURRENT BALANCE:** ₹{user['balance']}\n\n🔢 **Aap kitna amount withdraw karna chahte hain? (Digits me likhein):**")
             bot.register_next_step_handler(msg, ask_upi_id)
         else:
-            bot.send_message(message.chat.id, f"❌ **WITHDRAWAL DENIED!**\n\n⚠️ Bot me minimum withdrawal limit **₹15** hai.\n💰 Aapka available balance sirf **₹{user['balance']}** hai. Aur tasks complete karein!")
+            bot.send_message(message.chat.id, f"❌ **WITHDRAWAL DENIED!**\n\n⚠️ Bot me minimum withdrawal limit **₹15** hai.")
             
     elif message.text == "📚 Help & Tutorial":
         with db_thread_lock:
@@ -827,7 +792,7 @@ def handle_text_messages(message):
                 review = conn.execute("SELECT * FROM review_pool WHERE status = 'AVAILABLE' ORDER BY id ASC LIMIT 1").fetchone()
         
         if not review:
-            bot.send_message(message.chat.id, "⚠️ **No Review Task Available!**\n\n⚡ Pool me filhal koi review task stock nahi hai. Admin jaise hi naye tasks load karenge, aapko notify kar diya jayega yrr!")
+            bot.send_message(message.chat.id, "⚠️ **No Review Task Available!**")
             return
             
         current_time = int(time.time())
@@ -844,9 +809,9 @@ def handle_text_messages(message):
             f"💰 **Task Reward Earning:** `₹{r_reward} Cash Balance` (Direct Wallet)\n"
             "───────────────────\n"
             f"🔗 **Review Link Map Path:**\n{review['review_link']}\n\n"
-            f"📝 **Review Text Requirements (Copy it):**\n`{review['review_msg']}`\n"
+            f"📝 **Review Text Requirements:**\n`{review['review_msg']}`\n"
             "───────────────────\n"
-            "⚠️ **Instructions:** Upar diye gaye link par jaakar text paste karke dynamic review karein, aur uske baad niche diye button se apna screenshot proof file submit karein yrr!"
+            "⚠️ **Instructions:** Review karke niche diye button se apna screenshot proof file submit karein yrr!"
         )
         
         markup = types.InlineKeyboardMarkup(row_width=2)
@@ -868,12 +833,12 @@ def ask_upi_id(message):
             with get_db_connection() as conn:
                 user = conn.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,)).fetchone()
         if amount < 15.0 or amount > user['balance']:
-            bot.send_message(message.chat.id, "❌ **INVALID REQUEST!**\n\n⚠️ Sahi amount dalein. Ya toh aapka input limit (₹15) se kam hai ya wallet balance se zyada.")
+            bot.send_message(message.chat.id, "❌ **INVALID REQUEST!** Sahi amount dalein.")
             return
         msg = bot.send_message(message.chat.id, "📱 **Ab apni Real UPI ID send karein (E.g. username@upi):**")
         bot.register_next_step_handler(msg, process_withdrawal_admin_review, amount)
     except:
-        bot.send_message(message.chat.id, "❌ **FORMAT ERROR!**\n\n⚠️ Amount me sirf numbers/digits hi dalein.")
+        bot.send_message(message.chat.id, "❌ **FORMAT ERROR!**")
 
 def process_withdrawal_admin_review(message, amount):
     user_id = message.from_user.id
@@ -883,7 +848,7 @@ def process_withdrawal_admin_review(message, amount):
         with get_db_connection() as conn:
             user_data = conn.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,)).fetchone()
             if not user_data or user_data['balance'] < amount:
-                bot.send_message(message.chat.id, "❌ **TRANSACTION FAILED!** Low balance detected.")
+                bot.send_message(message.chat.id, "❌ **TRANSACTION FAILED!**")
                 return
                 
             conn.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (amount, user_id))
@@ -894,9 +859,9 @@ def process_withdrawal_admin_review(message, amount):
         types.InlineKeyboardButton("🟢 Approve Payout", callback_data=f"wd_app_{user_id}_{amount}"),
         types.InlineKeyboardButton("🔴 Reject Payout", callback_data=f"wd_rej_{user_id}_{amount}")
     )
-    success_text = f"✅ **\"Withdrawal Request Submitted!\"**\n\n💰 **\"Amount:\"** ₹{amount}\n📱 **\"UPI ID:\"** {upi_id}\n\n⚠️ **\"Payment Under 24 Hours\"**"
+    success_text = f"✅ **Withdrawal Request Submitted!**\n\n💰 **Amount:** ₹{amount}\n📱 **UPI ID:** {upi_id}\n\n⚠️ **Payment Under 24 Hours**"
     bot.send_message(message.chat.id, success_text, parse_mode="Markdown")
-    bot.send_message(WITHDRAW_CHANNEL_ID, f"🚨 **NEW WITHDRAWAL PENDING** 🚨\n\n👤 **User ID:** `{user_id}`\n💵 **Amount Deducted:** ₹{amount}\n📱 **UPI ID:** `{upi_id}`\n\nSelect action from panel:", parse_mode="Markdown", reply_markup=wd_markup)
+    bot.send_message(WITHDRAW_CHANNEL_ID, f"🚨 **NEW WITHDRAWAL PENDING** 🚨\n\n👤 **User ID:** `{user_id}`\n💵 **Amount:** ₹{amount}\n📱 **UPI ID:** `{upi_id}`", parse_mode="Markdown", reply_markup=wd_markup)
 
 # ──────────────────────────────────────────────────────────────────────
 # 🛰_ SECTION 11: ASYNCHRONOUS ENGINE HANDLERS (CALLBACK DISPATCH MODULES)
@@ -904,7 +869,7 @@ def process_withdrawal_admin_review(message, amount):
 
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callbacks(call):
-    """Monitors incoming callback triggers and logs database states instantly."""
+    check_and_release_expired_tasks()
     user_id = call.from_user.id
     chat_id = call.message.chat.id
     
@@ -919,18 +884,18 @@ def handle_callbacks(call):
             bot.answer_callback_query(call.id, "✅ Channels Verified!", show_alert=False)
             try: bot.delete_message(chat_id, call.message.message_id)
             except: pass
-            bot.send_message(chat_id, "🎉 **CONGRATULATIONS!**\n\n✅ Aapke saare channels successfully verify ho gaye hain! Bot functionality unlock ho chuki hai.", reply_markup=main_menu())
+            bot.send_message(chat_id, "🎉 **CONGRATULATIONS!** Channels successfully verify ho gaye hain!", reply_markup=main_menu())
         else:
-            bot.answer_callback_query(call.id, "❌ Verification failed! Please check channels.", show_alert=True)
+            bot.answer_callback_query(call.id, "❌ Verification failed!", show_alert=True)
         return
 
     if not is_user_joined_all(user_id) and call.data != "verify_channels":
-        bot.answer_callback_query(call.id, "❌ Access Blocked! Pehle channels join verify karein.", show_alert=True)
+        bot.answer_callback_query(call.id, "❌ Access Blocked!", show_alert=True)
         return
 
     # 📋 GMAIL HISTORY VIEWER DISPLAY LAYER
     if call.data == "view_gmail_history":
-        bot.answer_callback_query(call.id) # 🔥 INSTANT TELEGRAM RESPONSE CONFIRMATION
+        bot.answer_callback_query(call.id)
         with db_thread_lock:
             with get_db_connection() as conn:
                 history_rows = conn.execute("SELECT gmail, status FROM user_history WHERE user_id = ? ORDER BY id DESC LIMIT 20", (user_id,)).fetchall()
@@ -938,7 +903,7 @@ def handle_callbacks(call):
         
         history_text = "📋 **YOUR GMAIL SUBMISSION HISTORY (Last 20 Rows)** 📋\n───────────────────\n"
         if not history_rows:
-            history_text += "⚠️ Aapne abhi tak koi bhi gmail task complete/submit nahi kiya hai yrr!"
+            history_text += "⚠️ Aapne abhi tak koi bhi gmail task complete nahi kiya hai!"
         else:
             for row in history_rows:
                 st = row['status']
@@ -949,27 +914,28 @@ def handle_callbacks(call):
                 history_text += f"📧 `{row['gmail']}`\nStatus: **{label}**\n───────────────────\n"
         
         if extra_msg:
-            history_text += f"\n💬 **Extra Info Note:** {extra_msg}"
+            history_text += f"\n💬 **Extra Info:** {extra_msg}"
             
         bot.send_message(chat_id, history_text, parse_mode="Markdown")
         return
 
-    # 🛰️ ADJUDICATION CENTRAL CONTROLLER RESOLUTIONS (DIRECT SYSTEM WITH INSTANT PUSH MATRIX)
+    # 🛰️ ADJUDICATION CENTRAL CONTROLLER RESOLUTIONS
     if call.data.startswith("unl_") or call.data.startswith("sng_"):
-        # 🔥 INSTANT ACKNOWLEDGEMENT TO BLOCK THE LOADING/DER-SE ICON TRANSIT
         bot.answer_callback_query(call.id, "⏳ Processing Command...", show_alert=False)
-        
         parts = call.data.split("_")
         prefix, action = parts[0], parts[1]
         
-        if len(parts) == 5:
-            target_user, session_id, history_id = int(parts[2]), int(parts[3]), int(parts[4])
-        else:
+        # 🔥 CRITICAL ROUTING BUG FIX: Check if it's the compressed 64-bytes multi-submit format or single format explicitly
+        if len(parts) == 4:
             session_id, history_id = int(parts[2]), int(parts[3])
             with db_thread_lock:
                 with get_db_connection() as conn:
                     s_row = conn.execute("SELECT user_id FROM sessions WHERE id = ?", (session_id,)).fetchone()
                     target_user = s_row['user_id'] if s_row else user_id
+        elif len(parts) == 5:
+            target_user, session_id, history_id = int(parts[2]), int(parts[3]), int(parts[4])
+        else:
+            return # Block false inputs directly to prevent value crash loops
 
         with db_thread_lock:
             with get_db_connection() as conn:
@@ -987,8 +953,6 @@ def handle_callbacks(call):
                     conn.execute("UPDATE sessions SET status = 'TAKED' WHERE id = ?", (session_id,))
                     conn.commit()
                     bot.edit_message_caption(f"🔵 **Status updated: TAKED successfully.**", chat_id, call.message.message_id)
-                    
-                    # ⚡ INSTANT USER NOTIFICATION ROUTING PUSH
                     try: bot.send_message(target_user, f"🔵 **TASK UNDER CHECKING:**\n\n📧 Gmail: `{target_gmail}`\n\n*Apka gmail Successfully boss ko submit kardiya gaya hai Aab Aap Checking ka Wait Kare*")
                     except: pass
                     
@@ -1005,9 +969,7 @@ def handle_callbacks(call):
                     conn.commit()
                     
                     bot.edit_message_caption(f"🟢 **Task Approved! Wallet balance loaded safely.**", chat_id, call.message.message_id)
-                    
-                    # ⚡ INSTANT USER NOTIFICATION ROUTING PUSH
-                    try: bot.send_message(target_user, f"🟢 **TASK APPROVED! (SUCCESS)**\n\n📧 Gmail: `{target_gmail}`\n💰 Added: **+₹{reward}** 'Your Gmail History' page balance successfully updated!")
+                    try: bot.send_message(target_user, f"🟢 **TASK APPROVED! (SUCCESS)**\n\n📧 Gmail: `{target_gmail}`\n💰 Added: **+₹{reward}** successfully updated!")
                     except: pass
                     evaluate_and_release_referral_bonus(target_user)
                     
@@ -1017,9 +979,7 @@ def handle_callbacks(call):
                     conn.commit()
                     
                     bot.edit_message_caption(f"🔴 **Task REJECTED! Status converted to INVALID.**", chat_id, call.message.message_id)
-                    
-                    # ⚡ INSTANT USER NOTIFICATION ROUTING PUSH
-                    try: bot.send_message(target_user, f"🔴 **TASK REJECTED! (INVALID)**\n\n📧 Gmail: `{target_gmail}`\n❌ Apka account validation verification check me fail/Reject ho gaya hai!")
+                    try: bot.send_message(target_user, f"🔴 **TASK REJECTED! (INVALID)**\n\n📧 Gmail: `{target_gmail}`\n❌ Apka account validation matrix verification check me fail ho gaya hai!")
                     except: pass
         return
 
@@ -1044,14 +1004,14 @@ def handle_callbacks(call):
                     conn.execute("UPDATE review_pool SET status = 'COMPLETED' WHERE id = ?", (review_pool_id,))
                     conn.execute("UPDATE sessions SET status = 'APPROVED' WHERE id = ?", (session_id,))
                     conn.commit()
-                    bot.edit_message_caption(f"🟢 **Review Task Approved! Paid ₹{r_reward} to User direct wallet balance.**", chat_id, call.message.message_id)
+                    bot.edit_message_caption(f"🟢 **Review Task Approved! Paid ₹{r_reward}**", chat_id, call.message.message_id)
                     try: bot.send_message(target_user, "🎉 **Whohoo Apka review google map Par live hai Apka Money Apke Wallet ma add kardiya gaya hai**")
                     except: pass
                 elif action == "reject":
                     conn.execute("UPDATE review_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ?", (review_pool_id,))
                     conn.execute("UPDATE sessions SET status = 'REJECTED' WHERE id = ?", (session_id,))
                     conn.commit()
-                    bot.edit_message_caption("🔴 **Review Task Rejected! Reset parameters inside pool.**", chat_id, call.message.message_id)
+                    bot.edit_message_caption("🔴 **Review Task Rejected!**", chat_id, call.message.message_id)
                     try: bot.send_message(target_user, "❌ **Admin Na Apka Review Reject Kardiya Kyuki Apko Review Google Map par Live Nhi Hai**")
                     except: pass
         return
@@ -1065,12 +1025,12 @@ def handle_callbacks(call):
             with get_db_connection() as conn:
                 if action == "app":
                     bot.edit_message_text(f"🟢 **Approved Payout of ₹{amount}**", chat_id, call.message.message_id)
-                    bot.send_message(target_user, f"✅ **PAYMENT RECEIVED SUCCESSFULLY!**\n\nAapka ₹{amount} ka withdrawal request admin ne approve kar ke paise direct transfer kar diye hain! 🎉")
+                    bot.send_message(target_user, f"✅ **PAYMENT RECEIVED SUCCESSFULLY!**\n\nAapka ₹{amount} ka withdrawal request approve ho gaya hai! 🎉")
                 elif action == "rej":
                     conn.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amount, target_user))
                     conn.commit()
                     bot.edit_message_text(f"🔴 **Rejected Payout! Balance Refunded.**", chat_id, call.message.message_id)
-                    bot.send_message(target_user, f"❌ **WITHDRAWAL REJECTED!**\n\nAapka ₹{amount} ka cash request cancel kar diya gaya hai. Balance aapke wallet me **wapas refund** kar diya gaya hai.")
+                    bot.send_message(target_user, f"❌ **WITHDRAWAL REJECTED!** Balance wapas refund kar diya gaya hai.")
         return
 
     if call.data == "task_single":
@@ -1079,12 +1039,12 @@ def handle_callbacks(call):
             with get_db_connection() as conn:
                 lock_chk = conn.execute("SELECT value FROM settings WHERE key = 'lock_single_mode'").fetchone()['value']
                 if lock_chk == 'LOCK':
-                    bot.answer_callback_query(call.id, "🔒 Locked! Single Task filter closed temporary!", show_alert=True)
+                    bot.answer_callback_query(call.id, "🔒 Locked! Single task closed temporary!", show_alert=True)
                     return
 
                 task = conn.execute("SELECT * FROM task_pool WHERE status = 'AVAILABLE' ORDER BY id ASC LIMIT 1").fetchone()
                 if not task:
-                    bot.answer_callback_query(call.id, "⚠️ Stock Empty! Admin se bolo aur load karein.", show_alert=True)
+                    bot.answer_callback_query(call.id, "⚠️ Stock Empty!", show_alert=True)
                     return
                 current_time = int(time.time())
                 conn.execute("UPDATE task_pool SET status = 'LOCKED', assigned_to = ?, assigned_at = ? WHERE id = ?", (user_id, current_time, task['id']))
@@ -1100,7 +1060,7 @@ def handle_callbacks(call):
             "📨 **AAPKA SINGLE MODE GMAIL TASK** 📨\n\n"
             f"📧 **Gmail:** `{task['gmail']}`\n"
             f"🔑 **Password:** `{task['password']}`\n\n"
-            "⚠️ **Note:** Diye gaye details se successfully account config karke **10 minute** ke andar proof submit karein, warna stock lock release ho jayega!"
+            "⚠️ **Note:** Diye gaye details se config karke **10 minute** ke andar proof submit karein!"
         )
         bot.send_message(chat_id, task_msg, parse_mode="Markdown", reply_markup=markup)
 
@@ -1110,23 +1070,16 @@ def handle_callbacks(call):
             with get_db_connection() as conn:
                 lock_chk = conn.execute("SELECT value FROM settings WHERE key = 'lock_unlimited_mode'").fetchone()['value']
                 if lock_chk == 'LOCK':
-                    bot.answer_callback_query(call.id, "🔒 Locked! Admin ne Create Unlimited Gmail option closed kiya hai!", show_alert=True)
+                    bot.answer_callback_query(call.id, "🔒 Locked! Create Unlimited Gmail closed temporary!", show_alert=True)
                     return
-                    
                 rules_msg = conn.execute("SELECT value FROM settings WHERE key = 'unlimited_rule_msg'").fetchone()['value']
             
         markup = types.InlineKeyboardMarkup(row_width=1)
         markup.add(
-            types.InlineKeyboardButton("✅ Sahi Hai (Submit Gmail + SS)", callback_data="task_unlimited"),
+            types.InlineKeyboardButton("✅ Sahi Hai (Submit)", callback_data="task_unlimited"),
             types.InlineKeyboardButton("❌ Cancel", callback_data="cancel_preview_mode")
         )
-        
-        bot.send_message(
-            chat_id, 
-            f"📋 **CREATE UNLIMITED GMAIL: STRATIFIED RULES** 📋\n\n{rules_msg}\n\n⚠️ **Important:** Upar diye gaye saare rules ko dhyan se padhein, uske baad hi niche button par click karke details submit karein!", 
-            parse_mode="Markdown", 
-            reply_markup=markup
-        )
+        bot.send_message(chat_id, f"📋 **CREATE UNLIMITED GMAIL RULES** 📋\n\n{rules_msg}", parse_mode="Markdown", reply_markup=markup)
 
     elif call.data == "task_unlimited":
         bot.answer_callback_query(call.id)
@@ -1135,9 +1088,8 @@ def handle_callbacks(call):
         
         unlimited_input_prompt = (
             "♾️ **CREATE UNLIMITED GMAIL CENTRE** ♾️\n\n"
-            "Aap ek baar me **ek se zyada Gmails** bhi lines break (newline) karke direct bhej sakte hain yrr:\n\n"
-            "👉 **Format:**\n`Email1@Gmail.com`\n`Email2@Gmail.com`\n\n"
-            "📝 **Rules Constraints:** Agar aap **sirf 1 Gmail** bhejenge to system image proof validation screenshot mangega, par agar aap **1 se zyada** bhejenge to automatic screenshot proof skips ho jayega aur parameters bypass processing register ho jayenge!"
+            "Aap ek baar me **ek se zyada Gmails** bhej sakte hain:\n\n"
+            "👉 **Format:**\n`Email1@Gmail.com`\n`Email2@Gmail.com`"
         )
         msg = bot.send_message(chat_id, unlimited_input_prompt, parse_mode="Markdown")
         bot.register_next_step_handler(msg, capture_unlimited_text_credentials)
@@ -1146,7 +1098,7 @@ def handle_callbacks(call):
         bot.answer_callback_query(call.id)
         try: bot.delete_message(chat_id, call.message.message_id)
         except: pass
-        bot.send_message(chat_id, "❌ **Task Cancelled!** Creation pipeline reset to safe configuration limits.", reply_markup=main_menu())
+        bot.send_message(chat_id, "❌ **Task Cancelled!**", reply_markup=main_menu())
 
     elif call.data.startswith("cancel_"):
         bot.answer_callback_query(call.id, "Task Cancelled...", show_alert=False)
@@ -1154,7 +1106,6 @@ def handle_callbacks(call):
         with db_thread_lock:
             with get_db_connection() as conn:
                 session = conn.execute("SELECT * FROM sessions WHERE id = ?", (sid,)).fetchone()
-                
                 if session:
                     if session['task_type'] == 'REVIEW_TASK':
                         conn.execute("UPDATE review_pool SET status = 'AVAILABLE', assigned_to = NULL, assigned_at = NULL WHERE id = ?", (int(session['task_id_list']),))
@@ -1176,27 +1127,17 @@ def handle_callbacks(call):
                             conn.commit()
                             
                             u_info = call.from_user
-                            ban_alert_msg = (
-                                f"🚨 **SECURITY ALERT: ANTI-SPAM AUTO BAN** 🚨\n\n"
-                                f"👤 **User Name:** {u_info.first_name}\n"
-                                f"🆔 **User ID:** `{user_id}`\n"
-                                f"⚠️ **Total Cancel Movements:** {u_update['cancel_count']} times\n"
-                                f"───────────────────\n"
-                                f"🚫 *Bande ne baar-baar stock cancel karke limit cross kar di thi, isliye bot ne use AUTOMATICALLY BAN kar diya hai!*"
-                            )
+                            ban_alert_msg = f"🚨 **SECURITY ALERT: AUTO BAN** 🚨\n\n👤 **User:** {u_info.first_name}\n🚫 *Baar-baar task cancel karne ke karan BAN kar diya gaya hai!*"
                             try: bot.send_message(chat_id=ADMIN_ID, text=ban_alert_msg, parse_mode="Markdown")
-                            except: pass
-                            try: bot.edit_message_text("❌ **Aapka account baar-baar task cancel karne ke karan BAN kar diya gaya hai!**", chat_id, call.message.message_id)
                             except: pass
                             return
                     conn.commit()
-
-        bot.edit_message_text("❌ **Task Cancelled! Item successfully dropped/destroyed from live stock pool.**", chat_id, call.message.message_id)
+        bot.edit_message_text("❌ **Task Cancelled! Item permanently destroyed from live stock pool.**", chat_id, call.message.message_id)
 
     elif call.data.startswith("done_"):
         bot.answer_callback_query(call.id)
         sid = int(call.data.split('_')[1])
-        msg = bot.send_message(chat_id, "📸 **PROOF SUBMISSION CENTRE**\n\nAapne jo task abhi successfully kiya hai, uska clear image screenshot proof send karein:")
+        msg = bot.send_message(chat_id, "📸 **PROOF SUBMISSION CENTRE**\n\nAapne jo task kiya hai uska clear image screenshot send karein:")
         bot.register_next_step_handler(msg, process_final_channel_proof, sid)
 
 # ──────────────────────────────────────────────────────────────────────
@@ -1204,22 +1145,19 @@ def handle_callbacks(call):
 # ──────────────────────────────────────────────────────────────────────
 
 def capture_unlimited_text_credentials(message):
-    """Saves text credentials and splits multi-lines to bypass screenshot requirements with compressed 64-bytes callback locks."""
     user_id = message.from_user.id
     raw_input = message.text
     
     if not raw_input:
-        bot.send_message(message.chat.id, "❌ **INPUT ERROR!** Kripya details ko sahi text template format me hi send karein. Process reset.")
+        bot.send_message(message.chat.id, "❌ **INPUT ERROR!** Details sahi text format me bhejें.")
         return
         
     lines = [line.strip() for line in raw_input.strip().split("\n") if line.strip()]
     if not lines:
-        bot.send_message(message.chat.id, "❌ **INPUT ERROR!** Empty raw data.")
+        bot.send_message(message.chat.id, "❌ **INPUT ERROR!**")
         return
         
     current_time = int(time.time())
-    
-    # CASE 1: Single Line Entry -> Triggers standard image screenshot verification route tracking flow
     if len(lines) == 1:
         target_gmail = lines[0]
         with db_thread_lock:
@@ -1229,27 +1167,22 @@ def capture_unlimited_text_credentials(message):
                 sid = cursor.lastrowid
                 conn.commit()
             
-        msg = bot.send_message(message.chat.id, "📸 **Ab is create kiye huye account ka clear image screenshot proof send karein:**")
+        msg = bot.send_message(message.chat.id, "📸 **Ab is create kiye huye account ka clear screenshot send karein:**")
         bot.register_next_step_handler(msg, process_final_channel_proof, sid)
-        
-    # CASE 2: Multi-Line Entries Entry -> Completely bypasses screenshot requirement loops, maps individually under 64-bytes payload rule
     else:
-        bot.send_message(message.chat.id, "⏳ **Multiple credentials detected! Real-time session locks active. Pushing data to validation panel...**")
-        
-        # FIXED CRITICAL IMMUNITY: Commits inside the loop dynamically to link each button context accurately
+        bot.send_message(message.chat.id, "⏳ **Multiple credentials detected! Pushing data to validation panel...**")
         for gmail_item in lines:
             with db_thread_lock:
                 with get_db_connection() as conn:
-                    # Save into user tracking history map instantly
                     conn.execute("INSERT INTO user_history (user_id, gmail, task_type, status) VALUES (?, ?, 'UNLIMITED', 'PENDING')", (user_id, gmail_item))
                     h_id = conn.execute("SELECT last_insert_rowid() as lid").fetchone()['lid']
                     
                     cursor = conn.cursor()
                     cursor.execute("INSERT INTO sessions (user_id, task_type, task_id_list, started_at, status) VALUES (?, 'UNLIMITED_MULTI', ?, ?, 'PENDING')", (user_id, gmail_item, current_time))
                     sid = cursor.lastrowid
-                    conn.commit() # Real-time write lock commitment
+                    conn.commit()
             
-            # SOLID FIXED LAYER: String completely removed from data block to protect against Telegram button 64-bytes breakdown bug!
+            # 🔥 64-bytes payload rule alignment mapping explicitly
             admin_markup = types.InlineKeyboardMarkup()
             admin_markup.add(
                 types.InlineKeyboardButton("🔵 Taked", callback_data=f"unl_taked_{sid}_{h_id}"),
@@ -1261,12 +1194,11 @@ def capture_unlimited_text_credentials(message):
                 f"🛰️ **NEW PROGRESS TASK VALIDATION (MULTI - NO SS)** 🛰️\n\n"
                 f"📋 **TASK TYPE:** `♾️ [UNLIMITED MULTI MODE]`\n"
                 f"👤 **User ID:** `{user_id}`\n"
-                f"📧 **Submitted Item:** `{gmail_item}`\n\n"
-                f"⚠️ *Review unique credential line text structure properties and resolve parameters from blocks below:* "
+                f"📧 **Submitted Item:** `{gmail_item}`"
             )
             bot.send_message(GMAIL_CHANNEL_ID, caption_text, reply_markup=admin_markup, parse_mode="Markdown")
             
-        bot.send_message(message.chat.id, "✅ **Aapke saare Gmails successfully check parameters panel me submit ho gaye hain! Live changes track karne ke liye 'Your Gmail History' control page check karein yrr.** 🚀")
+        bot.send_message(message.chat.id, "✅ **Aapke saare Gmails successfully check parameters panel me submit ho gaye hain!** 🚀")
 
 # ──────────────────────────────────────────────────────────────────────
 # 🛰️ SECTION 12: SERVICE POLICE INITIALIZATION POLLING LAYER
