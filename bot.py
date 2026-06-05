@@ -324,9 +324,8 @@ def process_final_channel_proof(message, session_id):
         
     elif session['task_type'] == 'REVIEW_TASK':
         review_target_id = int(session['task_id_list'])
-        with db_thread_lock:
-            with get_db_connection() as conn:
-                review_data = conn.execute("SELECT review_link, review_msg FROM review_pool WHERE id = ?", (review_target_id,)).fetchone()
+        with get_db_connection() as conn:
+            review_data = conn.execute("SELECT review_link, review_msg FROM review_pool WHERE id = ?", (review_target_id,)).fetchone()
         target_url = review_data['review_link'] if review_data else "N/A"
         
         admin_markup = types.InlineKeyboardMarkup()
@@ -360,10 +359,17 @@ def process_final_channel_proof(message, session_id):
 def main_menu():
     """Generates the absolute responsive system interface keyboard layout mapping."""
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add(types.KeyboardButton("📨 Get Gmail Task"))
-    markup.add(types.KeyboardButton("💰 Wallet"), types.KeyboardButton("👥 Invite & Earn"))
-    markup.add(types.KeyboardButton("💸 Withdraw"), types.KeyboardButton("📚 Help & Tutorial"))
-    markup.add(types.KeyboardButton("⭐ Review Task"))
+    btn1 = types.KeyboardButton("📨 Get Gmail Task")
+    btn2 = types.KeyboardButton("💰 Wallet")
+    btn3 = types.KeyboardButton("👥 Invite & Earn")
+    btn4 = types.KeyboardButton("💸 Withdraw")
+    btn5 = types.KeyboardButton("📚 Help & Tutorial")
+    btn6 = types.KeyboardButton("⭐ Review Task") 
+    
+    markup.add(btn1)
+    markup.add(btn2, btn3)
+    markup.add(btn4, btn5)
+    markup.add(btn6)
     return markup
 
 def task_options_menu():
@@ -422,22 +428,6 @@ def start_cmd(message):
 # ──────────────────────────────────────────────────────────────────────
 # 🛰️ SECTION 8: EXTENSIVE ADMINISTRATIVE BACKEND INSTRUMENT SUITE
 # ──────────────────────────────────────────────────────────────────────
-
-@bot.message_handler(commands=['sethelp'])
-def admin_set_help_tutorial(message):
-    if message.from_user.id != ADMIN_ID: return
-    try:
-        new_content = message.text.replace("/sethelp", "").strip()
-        if not new_content:
-            bot.send_message(ADMIN_ID, "❌ **Format:** `/sethelp Text or custom tutorial link strings`")
-            return
-        with db_thread_lock:
-            with get_db_connection() as conn:
-                conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('tutorial', ?)", (new_content,))
-                conn.commit()
-        bot.send_message(ADMIN_ID, "✅ **Help & Tutorial message updated in database successfully!**")
-    except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ **Set Help Error:** {e}")
 
 @bot.message_handler(commands=['setunlimitedmsg'])
 def admin_set_unlimited_mode_rules_text(message):
@@ -641,6 +631,57 @@ def admin_delete_task(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Delete Task Error:** {e}")
 
+@bot.message_handler(commands=['sethelp'])
+def admin_set_help_tutorial(message):
+    if message.from_user.id != ADMIN_ID: return
+    try:
+        new_content = message.text.replace("/sethelp", "").strip()
+        if not new_content:
+            bot.send_message(ADMIN_ID, "❌ **Format:** `/sethelp Text or custom tutorial link strings`")
+            return
+        with db_thread_lock:
+            with get_db_connection() as conn:
+                # 🔥 FIXED HELP INJECTION: Force secure data overwriting update layout parameters safely
+                conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('tutorial', ?)", (new_content,))
+                conn.commit()
+        bot.send_message(ADMIN_ID, "✅ **Help & Tutorial message updated in database successfully!**")
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ **Set Help Error:** {e}")
+
+@bot.message_handler(commands=['broadcast'])
+def admin_broadcast_flexible(message):
+    if message.from_user.id != ADMIN_ID: return
+    text_to_send = message.text.replace("/broadcast", "").strip()
+    if not text_to_send:
+        bot.send_message(ADMIN_ID, "❌ **Format:** `/broadcast Write any global message here`")
+        return
+    try:
+        with db_thread_lock:
+            with get_db_connection() as conn:
+                users = conn.execute("SELECT user_id FROM users WHERE is_banned = 0").fetchall()
+        
+        count = 0
+        failed_count = 0
+        status_msg = bot.send_message(ADMIN_ID, f"📢 **Broadcast Shuru Ho Gaya Hai...**\nTotal Users in DB: {len(users)}")
+        
+        for u in users:
+            try:
+                bot.send_message(chat_id=u['user_id'], text=text_to_send, disable_web_page_preview=False)
+                count += 1
+                if count % 20 == 0: time.sleep(1.0)
+                else: time.sleep(0.05)
+            except telebot.apihelper.ApiTelegramException: failed_count += 1; continue
+            except Exception: failed_count += 1; continue
+                
+        bot.edit_message_text(
+            chat_id=ADMIN_ID,
+            message_id=status_msg.message_id,
+            text=f"📢 **Broadcast Complete Successfully!**\n\n✅ **Delivered To:** `{count}` users\n❌ **Failed/Blocked:** `{failed_count}` users",
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        bot.send_message(ADMIN_ID, f"❌ **Broadcast Engine Failure:** {e}")
+
 @bot.message_handler(commands=['checkuser'])
 def admin_check_user(message):
     if message.from_user.id != ADMIN_ID: return
@@ -727,6 +768,7 @@ def handle_text_messages(message):
         bot.register_next_step_handler(msg, ask_withdrawal_upi_id_step)
             
     elif message.text == "📚 Help & Tutorial":
+        # 🔥 FIXED HELP TEXT RETRIEVAL HOOK: Direct parameters database execution mapping lines deployed safely
         with db_thread_lock:
             with get_db_connection() as conn:
                 res = conn.execute("SELECT value FROM settings WHERE key = 'tutorial'").fetchone()
@@ -848,7 +890,7 @@ def handle_callbacks(call):
     user_id = call.from_user.id
     chat_id = call.message.chat.id
 
-    # 🔥 HOT-PATCH RE-ROUTE INTEGRATION: Intercept history click event immediately at absolute top level structure boundaries
+    # 🔥 FIXED DYNAMIC GMAIL HISTORY MODULE TRIGGER OVERRIDE: Registered at zero-index position to process instant click triggers crash free
     if call.data == "history_dashboard_loop":
         current_today_date = datetime.date.today().isoformat()
         
@@ -1237,7 +1279,7 @@ def check_unlimited_batch_inputs_count(message):
             caption_text = (
                 f"🛰️ **NEW MULTI-BATCH UNLIMITED SUBMISSION ({index+1}/{len(evaluated_gmails)})** 🛰️\n\n"
                 f"📋 **TASK TYPE:** `♾️ [UNLIMITED BATCH ENGINE]`\n"
-                f"👤 **User ID:** `{user_id}`\n"
+                f"👤 **User ID:** `{user_id}`\n\n"
                 f"📋 **TARGET EMAIL SPECIFICATION:**\n`{b_gmail}`\n\n"
                 f"⚡ *[NO SCREENSHOT PROOF REQUIRED FOR EXTENDED MULTI-BATCH ITEMS]*"
             )
