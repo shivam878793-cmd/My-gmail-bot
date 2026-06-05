@@ -353,11 +353,12 @@ def process_final_channel_proof(message, session_id):
                 h_id = conn.execute("SELECT last_insert_rowid() as lid").fetchone()['lid']
                 conn.commit()
         
+        # FIXED STABLE: Short callback data structure deployment to satisfy under 64-bytes criteria perfectly
         admin_markup = types.InlineKeyboardMarkup()
         admin_markup.add(
-            types.InlineKeyboardButton("🔵 Taked", callback_data=f"unl_taked_{user_id}_{session_id}_{h_id}"),
-            types.InlineKeyboardButton("🟢 Approve", callback_data=f"unl_approve_{user_id}_{session_id}_{h_id}"),
-            types.InlineKeyboardButton("🔴 Reject", callback_data=f"unl_reject_{user_id}_{session_id}_{h_id}")
+            types.InlineKeyboardButton("🔵 Taked", callback_data=f"unl_taked_{session_id}_{h_id}"),
+            types.InlineKeyboardButton("🟢 Approve", callback_data=f"unl_approve_{session_id}_{h_id}"),
+            types.InlineKeyboardButton("🔴 Reject", callback_data=f"unl_reject_{session_id}_{h_id}")
         )
         
         caption_text = (
@@ -385,11 +386,12 @@ def process_final_channel_proof(message, session_id):
                 h_id = conn.execute("SELECT last_insert_rowid() as lid").fetchone()['lid']
                 conn.commit()
                 
+        # FIXED STABLE: Short callback data structure deployment to satisfy under 64-bytes criteria perfectly
         admin_markup = types.InlineKeyboardMarkup()
         admin_markup.add(
-            types.InlineKeyboardButton("🔵 Taked", callback_data=f"sng_taked_{user_id}_{session_id}_{h_id}"),
-            types.InlineKeyboardButton("🟢 Approve", callback_data=f"sng_approve_{user_id}_{session_id}_{h_id}"),
-            types.InlineKeyboardButton("🔴 Reject", callback_data=f"sng_reject_{user_id}_{session_id}_{h_id}")
+            types.InlineKeyboardButton("🔵 Taked", callback_data=f"sng_taked_{session_id}_{h_id}"),
+            types.InlineKeyboardButton("🟢 Approve", callback_data=f"sng_approve_{session_id}_{h_id}"),
+            types.InlineKeyboardButton("🔴 Reject", callback_data=f"sng_reject_{session_id}_{h_id}")
         )
         caption_text = f"🛰️ **NEW PROGRESS TASK VALIDATION** 🛰️\n\n📋 **TASK TYPE:** `{task_label}`\n👤 **User ID:** `{user_id}`\n📧 **Gmail:** `{target_gmail}`\n\nAdmin resolve parameters from panel below to verify:"
 
@@ -957,11 +959,21 @@ def handle_callbacks(call):
         bot.answer_callback_query(call.id)
         return
 
-    # 🛰️ ADJUDICATION CENTRAL CONTROLLER RESOLUTIONS (DIRECT SYSTEM MAPPED)
+    # 🛰️ ADJUDICATION CENTRAL CONTROLLER RESOLUTIONS (DIRECT COMPRESSED MAPPING FIXED)
     if call.data.startswith("unl_") or call.data.startswith("sng_"):
         parts = call.data.split("_")
-        prefix, action, target_user, session_id, history_id = parts[0], parts[1], int(parts[2]), int(parts[3]), int(parts[4])
+        prefix, action = parts[0], parts[1]
         
+        # 🔥 FIXED STABLE LAYER: 64-Bytes payload length handler protection
+        if len(parts) == 5:
+            target_user, session_id, history_id = int(parts[2]), int(parts[3]), int(parts[4])
+        else:
+            session_id, history_id = int(parts[2]), int(parts[3])
+            with db_thread_lock:
+                with get_db_connection() as conn:
+                    s_row = conn.execute("SELECT user_id FROM sessions WHERE id = ?", (session_id,)).fetchone()
+                    target_user = s_row['user_id'] if s_row else user_id
+
         with db_thread_lock:
             with get_db_connection() as conn:
                 h_row = conn.execute("SELECT gmail FROM user_history WHERE id = ?", (history_id,)).fetchone()
@@ -996,7 +1008,7 @@ def handle_callbacks(call):
                     conn.commit()
                     
                     bot.edit_message_caption(f"🟢 **Task Approved! Wallet balance loaded safely.**", chat_id, call.message.message_id)
-                    try: bot.send_message(target_user, f"🟢 **TASK APPROVED! (SUCCESS)**\n\n📧 Gmail: `{target_gmail}`\n💰 Added: **+₹{reward}** aapke balance profile wallet me successfully add ho chuka hai!")
+                    try: bot.send_message(target_user, f"🟢 **TASK APPROVED! (SUCCESS)**\n\n📧 Gmail: `{target_gmail}`\n💰 Added: **+₹{reward}** 'Your Gmail History' page balance successfully updated!")
                     except: pass
                     evaluate_and_release_referral_bonus(target_user)
                     
@@ -1189,7 +1201,7 @@ def handle_callbacks(call):
 # ──────────────────────────────────────────────────────────────────────
 
 def capture_unlimited_text_credentials(message):
-    """Saves text credentials and splits multi-lines to bypass screenshot requirements with real-time commits."""
+    """Saves text credentials and splits multi-lines to bypass screenshot requirements with compressed 64-bytes callback locks."""
     user_id = message.from_user.id
     raw_input = message.text
     
@@ -1217,7 +1229,7 @@ def capture_unlimited_text_credentials(message):
         msg = bot.send_message(message.chat.id, "📸 **Ab is create kiye huye account ka clear image screenshot proof send karein:**")
         bot.register_next_step_handler(msg, process_final_channel_proof, sid)
         
-    # CASE 2: Multi-Line Entries Entry -> Completely bypasses screenshot requirement loops, maps individually to admin with instant commits
+    # CASE 2: Multi-Line Entries Entry -> Completely bypasses screenshot requirement loops, maps individually under 64-bytes payload rule
     else:
         bot.send_message(message.chat.id, "⏳ **Multiple credentials detected! Real-time session locks active. Pushing data to validation panel...**")
         
@@ -1234,12 +1246,12 @@ def capture_unlimited_text_credentials(message):
                     sid = cursor.lastrowid
                     conn.commit() # 🔥 Real-time write lock commitment
             
-            # Construct standalone control panel per line record logs context
+            # 🔥 SOLID FIXED LAYER: String completely removed from data block to protect against Telegram button 64-bytes breakdown bug!
             admin_markup = types.InlineKeyboardMarkup()
             admin_markup.add(
-                types.InlineKeyboardButton("🔵 Taked", callback_data=f"unl_taked_{user_id}_{sid}_{h_id}"),
-                types.InlineKeyboardButton("🟢 Approve", callback_data=f"unl_approve_{user_id}_{sid}_{h_id}"),
-                types.InlineKeyboardButton("🔴 Reject", callback_data=f"unl_reject_{user_id}_{sid}_{h_id}")
+                types.InlineKeyboardButton("🔵 Taked", callback_data=f"unl_taked_{sid}_{h_id}"),
+                types.InlineKeyboardButton("🟢 Approve", callback_data=f"unl_approve_{sid}_{h_id}"),
+                types.InlineKeyboardButton("🔴 Reject", callback_data=f"unl_reject_{sid}_{h_id}")
             )
             
             caption_text = (
