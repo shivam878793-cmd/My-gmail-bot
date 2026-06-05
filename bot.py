@@ -890,7 +890,7 @@ def handle_callbacks(call):
     user_id = call.from_user.id
     chat_id = call.message.chat.id
 
-    # 🔥 HIGH-SPEED HOT-RELOAD PATCH LAYER: Intercept history click event immediately at entry boundary to bypass any parsing block failures
+    # 🔥 CRITICAL OVERRIDE INTERCEPT BLOCK: History panel response directly hooked at top interface boundaries to prevent lag drops
     if call.data == "history_dashboard_loop":
         current_today_date = datetime.date.today().isoformat()
         
