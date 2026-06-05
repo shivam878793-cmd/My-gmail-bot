@@ -887,30 +887,10 @@ def process_withdrawal_admin_review(message, gmails_data):
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callbacks(call):
     """Monitors callback execution paths across distributed system scopes securely."""
-    check_and_release_expired_tasks()
     user_id = call.from_user.id
     chat_id = call.message.chat.id
-    
-    with db_thread_lock:
-        with get_db_connection() as conn:
-            u_chk = conn.execute("SELECT is_banned FROM users WHERE user_id = ?", (user_id,)).fetchone()
-    if u_chk and u_chk['is_banned'] == 1:
-        return
 
-    if call.data == "verify_channels":
-        if is_user_joined_all(user_id):
-            try: bot.delete_message(chat_id, call.message.message_id)
-            except: pass
-            bot.send_message(chat_id, "🎉 **CONGRATULATIONS!**\n\n✅ Aapke saare channels successfully verify ho gaye hain! Bot functionality unlock ho chuki hai.", reply_markup=main_menu())
-        else:
-            bot.answer_callback_query(call.id, "❌ Verification failed! Please check channels.", show_alert=True)
-        return
-
-    if not is_user_joined_all(user_id) and call.data != "verify_channels":
-        bot.answer_callback_query(call.id, "❌ Access Blocked! Pehle channels join verify karein.", show_alert=True)
-        return
-
-    # 📋 DYNAMIC SECTIONS MATRIX: Hooked directly here to ensure button click executes perfectly with 100% response metrics
+    # 🔥 HIGH-SPEED HOT-RELOAD PATCH LAYER: Intercept history click event immediately at entry boundary to bypass any parsing block failures
     if call.data == "history_dashboard_loop":
         current_today_date = datetime.date.today().isoformat()
         
@@ -921,6 +901,7 @@ def handle_callbacks(call):
         
         if not total_rows:
             bot.send_message(chat_id, "📋 **YOUR GMAIL SUBMISSION HISTORY** 📋\n\n⚠️ Aapne abhi tak koi bhi Gmail account submit nahi kiya hai yrr!")
+            bot.answer_callback_query(call.id)
             return
             
         history_text = "📅 ━━━━━━━━━━━━━━━━━━━━\n"
@@ -949,6 +930,28 @@ def handle_callbacks(call):
             history_text += f"{idx}️⃣. 📧 `{row['task_id_list']}`\n📊 **Status:** `{display_status}`\n───────────────────\n"
             
         bot.send_message(chat_id, history_text, parse_mode="Markdown")
+        bot.answer_callback_query(call.id)
+        return
+
+    check_and_release_expired_tasks()
+    
+    with db_thread_lock:
+        with get_db_connection() as conn:
+            u_chk = conn.execute("SELECT is_banned FROM users WHERE user_id = ?", (user_id,)).fetchone()
+    if u_chk and u_chk['is_banned'] == 1:
+        return
+
+    if call.data == "verify_channels":
+        if is_user_joined_all(user_id):
+            try: bot.delete_message(chat_id, call.message.message_id)
+            except: pass
+            bot.send_message(chat_id, "🎉 **CONGRATULATIONS!**\n\n✅ Aapke saare channels successfully verify ho gaye hain! Bot functionality unlock ho chuki hai.", reply_markup=main_menu())
+        else:
+            bot.answer_callback_query(call.id, "❌ Verification failed! Please check channels.", show_alert=True)
+        return
+
+    if not is_user_joined_all(user_id) and call.data != "verify_channels":
+        bot.answer_callback_query(call.id, "❌ Access Blocked! Pehle channels join verify karein.", show_alert=True)
         return
 
     # FIXED UNLIMITED BATCH ENGINE PROCESSING NODES
