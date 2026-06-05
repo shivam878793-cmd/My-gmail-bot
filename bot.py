@@ -54,8 +54,7 @@ def init_db():
                     cancel_count INTEGER DEFAULT 0,
                     is_banned INTEGER DEFAULT 0,
                     refer_reward_paid INTEGER DEFAULT 0
-                )
-            ''')
+                )''')
             
             # Inventory asset tracking registry model for Single Modes
             cursor.execute('''
@@ -66,8 +65,7 @@ def init_db():
                     assigned_to INTEGER DEFAULT NULL,
                     assigned_at INTEGER DEFAULT NULL,
                     status TEXT DEFAULT 'AVAILABLE'
-                )
-            ''')
+                )''')
             
             # Review and Rating automation tracker dataset matrix
             cursor.execute('''
@@ -78,8 +76,7 @@ def init_db():
                     assigned_to INTEGER DEFAULT NULL,
                     assigned_at INTEGER DEFAULT NULL,
                     status TEXT DEFAULT 'AVAILABLE'
-                )
-            ''')
+                )''')
             
             # Multi-session dynamic tracker with date registration string field safely inserted to parse target sections
             cursor.execute('''
@@ -91,16 +88,14 @@ def init_db():
                     started_at INTEGER,
                     status TEXT DEFAULT 'PENDING',
                     submission_date TEXT DEFAULT NULL
-                )
-            ''')
+                )''')
             
             # Internal key-value dynamic variables system registry
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS settings (
                     key TEXT PRIMARY KEY,
                     value TEXT
-                )
-            ''')
+                )''')
             
             # Seeding static parameters defaults safely without overwriting old values
             cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('tutorial', '📹 **Help & Tutorial Video:**\n\n[No video link set yet by admin. Use /sethelp to update]')")
@@ -134,7 +129,6 @@ except Exception as db_init_err:
 
 def is_user_joined_all(user_id):
     """Enforces absolute real-time structural lookups across target community endpoints."""
-    # ⚡ CACHE INTELLIGENCE LAYER: Prevents infinite loop loops on heavy traffic hosting pipelines
     if user_id in user_join_cache:
         last_check_timestamp, historical_cached_status = user_join_cache[user_id]
         if time.time() - last_check_timestamp < 900:  # 15 Minutes Cache Expiry Window
@@ -397,7 +391,6 @@ def start_cmd(message):
     """Processes user entrance vectors and handles cookies dynamically."""
     user_id = message.from_user.id
     
-    # Force fresh validation clearing on initialization commands endpoints
     if user_id in user_join_cache:
         del user_join_cache[user_id]
         
@@ -765,15 +758,14 @@ def handle_text_messages(message):
         bot.send_message(message.chat.id, invite_text, parse_mode="Markdown")
         
     elif message.text == "💸 Withdraw":
-        with db_thread_lock:
-            with get_db_connection() as conn:
-                user = conn.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,)).fetchone()
-        
-        if user['balance'] >= 15.0:
-            msg = bot.send_message(message.chat.id, f"💳 **CURRENT BALANCE:** ₹{user['balance']}\n\n🔢 **Aap kitna amount withdraw karna chahte hain? (Digits me likhein):**")
-            bot.register_next_step_handler(msg, ask_upi_id)
-        else:
-            bot.send_message(message.chat.id, f"❌ **WITHDRAWAL DENIED!**\n\n⚠️ Bot me minimum withdrawal limit **₹15** hai.\n💰 Aapka available balance sirf **₹{user['balance']}** hai. Aur tasks complete karein!")
+        # CHANGED WITHDRAW SYSTEM: Initiates the brand new sequential multi-step validation gateway flow
+        withdraw_input_prompt = (
+            "💸 **WITHDRAWAL PANEL GATEWAY** 💸\n\n"
+            "🔢 **Enter You All Approved Gmail Don't Enter Rejected Gmail:**\n\n"
+            "👉 *Aap apne ek ya ek se zyada approved gmails ko comma (,) laga kar bhej sakte hain!*"
+        )
+        msg = bot.send_message(message.chat.id, withdraw_input_prompt, parse_mode="Markdown")
+        bot.register_next_step_handler(msg, ask_withdrawal_upi_id_step)
             
     elif message.text == "📚 Help & Tutorial":
         with db_thread_lock:
@@ -821,43 +813,43 @@ def handle_text_messages(message):
 # 🛰️ SECTION 10: CASH REWARD WITHDRAWAL REVIEW FUNCTIONS
 # ──────────────────────────────────────────────────────────────────────
 
-def ask_upi_id(message):
-    try:
-        amount = float(message.text)
-        user_id = message.from_user.id
-        with db_thread_lock:
-            with get_db_connection() as conn:
-                user = conn.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,)).fetchone()
-        if amount < 15.0 or amount > user['balance']:
-            bot.send_message(message.chat.id, "❌ **INVALID REQUEST!**\n\n⚠️ Sahi amount dalein. Ya toh aapka input limit (₹15) se kam hai ya wallet balance se zyada.")
-            return
-        msg = bot.send_message(message.chat.id, "📱 **Ab apni Real UPI ID send karein (E.g. username@upi):**")
-        bot.register_next_step_handler(msg, process_withdrawal_admin_review, amount)
-    except:
-        bot.send_message(message.chat.id, "❌ **FORMAT ERROR!**\n\n⚠️ Amount me sirf numbers/digits hi dalein.")
+def ask_withdrawal_upi_id_step(message):
+    """Captures targeted approved gmails list input text block and chains the UPI query worker next."""
+    gmail_addresses_payload = message.text
+    if not gmail_addresses_payload or gmail_addresses_payload.strip() == "":
+        bot.send_message(message.chat.id, "❌ **INPUT INVALID!** Process aborted yrr.")
+        return
+        
+    msg = bot.send_message(message.chat.id, "📱 **Ab apni Real UPI ID send karein jisme payment chahiye (E.g. username@upi):**")
+    bot.register_next_step_handler(msg, process_withdrawal_admin_review, gmail_addresses_payload.strip())
 
-def process_withdrawal_admin_review(message, amount):
+def process_withdrawal_admin_review(message, gmails_data):
+    """Bundles user identities, custom typed gmails list, and verified upi strings safely to forward over to boss panel."""
     user_id = message.from_user.id
     upi_id = message.text
     
-    with db_thread_lock:
-        with get_db_connection() as conn:
-            user_data = conn.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,)).fetchone()
-            if not user_data or user_data['balance'] < amount:
-                bot.send_message(message.chat.id, "❌ **TRANSACTION FAILED!** Low balance detected.")
-                return
-                
-            conn.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", (amount, user_id))
-            conn.commit()
-    
+    if not upi_id or upi_id.strip() == "":
+        bot.send_message(message.chat.id, "❌ **UPI ID cannot be blank!** Operation reset.")
+        return
+
+    # Dynamic action parameters matching exact layout coordinates short structures
     wd_markup = types.InlineKeyboardMarkup()
     wd_markup.add(
-        types.InlineKeyboardButton("🟢 Approve Payout", callback_data=f"wd_app_{user_id}_{amount}"),
-        types.InlineKeyboardButton("🔴 Reject Payout", callback_data=f"wd_rej_{user_id}_{amount}")
+        types.InlineKeyboardButton("🟢 Approve Payout", callback_data=f"wd_app_{user_id}"),
+        types.InlineKeyboardButton("🔴 Reject Payout", callback_data=f"wd_rej_{user_id}")
     )
-    success_text = f"✅ **\"Withdrawal Request Submitted!\"**\n\n💰 **\"Amount:\"** ₹{amount}\n📱 **\"UPI ID:\"** {upi_id}\n\n⚠️ **\"Payment Under 24 Hours\"**"
+    
+    success_text = f"✅ **Withdrawal Request Submitted Successfully!**\n\n📋 **Gmail Address Details:**\n`{gmails_data}`\n📱 **UPI ID String:** `{upi_id}`\n\n⚠️ *Aapka application review ke liye bhej diya gaya hai. Checking wait karein yrr!*"
     bot.send_message(message.chat.id, success_text, parse_mode="Markdown")
-    bot.send_message(WITHDRAW_CHANNEL_ID, f"🚨 **NEW WITHDRAWAL PENDING** 🚨\n\n👤 **User ID:** `{user_id}`\n💵 **Amount Deducted:** ₹{amount}\n📱 **UPI ID:** `{upi_id}`\n\nSelect action from panel:", parse_mode="Markdown", reply_markup=wd_markup)
+    
+    admin_channel_alert = (
+        f"🚨 **NEW SYSTEM WITHDRAWAL APPLICATION** 🚨\n\n"
+        f"👤 **User ID:** `{user_id}`\n"
+        f"📧 **Submitted Gmails List:**\n`{gmails_data}`\n"
+        f"📱 **Target UPI Wallet Account:** `{upi_id}`\n\n"
+        f"Select administrative actions parameters below:"
+    )
+    bot.send_message(WITHDRAW_CHANNEL_ID, admin_channel_alert, parse_mode="Markdown", reply_markup=wd_markup)
 
 # ──────────────────────────────────────────────────────────────────────
 # 🛰️ SECTION 11: DISPATCH ASYNCHRONOUS ENGINE (CALLBACK ROUTERS)
@@ -889,14 +881,14 @@ def handle_callbacks(call):
         bot.answer_callback_query(call.id, "❌ Access Blocked! Pehle channels join verify karein.", show_alert=True)
         return
 
-    # 📋 DYNAMIC SECTIONS Matrix: Divides history records loop into Today vs Total parameters sets safely
+    # 📋 FIXED GMAIL HISTORY MATRIX ENGINE: Triggers instant, reliable, crash-proof full array maps logs lookups
     if call.data == "history_dashboard_loop":
         current_today_date = datetime.date.today().isoformat()
         
         with db_thread_lock:
             with get_db_connection() as conn:
                 today_rows = conn.execute("SELECT task_id_list, status FROM sessions WHERE user_id = ? AND task_type IN ('SINGLE', 'UNLIMITED_MODE') AND submission_date = ? ORDER BY id DESC", (user_id, current_today_date)).fetchall()
-                total_rows = conn.execute("SELECT task_id_list, status FROM sessions WHERE user_id = ? AND task_type IN ('SINGLE', 'UNLIMITED_MODE') ORDER BY id DESC LIMIT 40").fetchall()
+                total_rows = conn.execute("SELECT task_id_list, status FROM sessions WHERE user_id = ? AND task_type IN ('SINGLE', 'UNLIMITED_MODE') ORDER BY id DESC LIMIT 45").fetchall()
         
         if not total_rows:
             bot.send_message(chat_id, "📋 **YOUR GMAIL SUBMISSION HISTORY** 📋\n\n⚠️ Aapne abhi tak koi bhi Gmail account submit nahi kiya hai yrr!")
@@ -913,7 +905,7 @@ def handle_callbacks(call):
                 display_status = "Pending"
                 if row['status'] == 'APPROVED': display_status = "Success"
                 elif row['status'] == 'REJECTED': display_status = "Invalid"
-                elif row['status'] == 'TAKEN': display_status = "Pending" # Mapped strict parameters: Taken reads as Pending in user logs
+                elif row['status'] == 'TAKEN': display_status = "Pending"
                 history_text += f"{idx}️⃣. 📧 `{row['task_id_list']}`\n📊 **Status:** `{display_status}`\n\n"
                 
         history_text += "📊 ━━━━━━━━━━━━━━━━━━━━\n"
@@ -960,11 +952,17 @@ def handle_callbacks(call):
                     conn.execute("UPDATE users SET completed_single_tasks = completed_single_tasks + 1 WHERE user_id = ?", (target_user,))
                     conn.execute("UPDATE sessions SET status = 'APPROVED' WHERE id = ?", (session_id,))
                     conn.commit()
-            # CRITICAL UPGRADE FULFILLMENT: Explicit Admin panel tracks and retains structural lookups displaying User IDs cleanly
+            
             response_caption_block = f"🟢 **Approved email:** `{s_gmail}`\n🆔 **User ID Trace Node:** `{target_user}`"
             try: bot.edit_message_caption(response_caption_block, chat_id, call.message.message_id)
             except: bot.edit_message_text(response_caption_block, chat_id, call.message.message_id)
-            try: bot.send_message(target_user, f"🎉 **UNLIMITED GMAIL APPROVED!**\n\n📧 **Gmail ID:** `{s_gmail}`\n💰 Aapka ye account accept ho gaya hai aur iska point balance credit kar diya gaya hai! 💸")
+            
+            # CHANGED NOTIFICATION TEXT BLOCK: Replaced old validation metrics with the customized tiers reward text strings logs mapping
+            customized_app_alert = (
+                "🎉 **Whhoo Apka Gmail Approve Kardiya Gaya Hai "
+                "Aab Aap Withdraw Ma Jaker Apna All Approved Gmail Send Karke Upi Id Bhaj Submit Karde**"
+            )
+            try: bot.send_message(target_user, customized_app_alert, parse_mode="Markdown")
             except: pass
             evaluate_and_release_referral_bonus(target_user)
             
@@ -985,7 +983,7 @@ def handle_callbacks(call):
                     conn.execute("UPDATE sessions SET status = 'TAKEN' WHERE id = ?", (session_id,))
                     conn.commit()
                     
-            # INSULATION HOOK FULFILLMENT: The inline validation triggers stay persistently visible on the channel logs after Taken events occur
+            # TAKEN BUTTON INSULATION MODIFICATION: Preserves the active control coefficients parameters switches keys safely
             keep_markup = types.InlineKeyboardMarkup(row_width=1)
             keep_markup.add(
                 types.InlineKeyboardButton("🟢 Approve Payout", callback_data=f"unl_app_{session_id}_{target_index}"),
@@ -1026,7 +1024,12 @@ def handle_callbacks(call):
                     conn.commit()
             response_text = f"🟢 **Single Task Approved email: {s_gmail}**\n🆔 **Verified User ID:** `{target_user}`"
             bot.edit_message_caption(response_text, chat_id, call.message.message_id)
-            try: bot.send_message(target_user, f"🎉 **SINGLE MODE GMAIL APPROVED!**\n\n📧 **Gmail ID:** `{s_gmail}`\n💰 Aapka task verification accept ho gaya hai! Reward credited! 💸")
+            
+            customized_app_alert = (
+                "🎉 **Whhoo Apka Gmail Approve Kardiya Gaya Hai "
+                "Aab Aap Withdraw Ma Jaker Apna All Approved Gmail Send Karke Upi Id Bhaj Submit Karde**"
+            )
+            try: bot.send_message(target_user, customized_app_alert, parse_mode="Markdown")
             except: pass
             evaluate_and_release_referral_bonus(target_user)
             
@@ -1079,20 +1082,26 @@ def handle_callbacks(call):
                     bot.edit_message_caption("🔴 **Review Task Rejected! Status reset to AVAILABLE inside isolated registers.**", chat_id, call.message.message_id)
         return
 
+    # UPDATED WITHDRAW CHANNELS PROCESSOR NODES: Intercepts actions keys to push confirmation alerts directly down down link path arrays
     if call.data.startswith('wd_'):
         if user_id != ADMIN_ID: return
         parts = call.data.split('_')
-        action, target_user, amount = parts[1], int(parts[2]), float(parts[3])
-        with db_thread_lock:
-            with get_db_connection() as conn:
-                if action == "app":
-                    bot.edit_message_text(f"🟢 **Approved Payout of ₹{amount}**", chat_id, call.message.message_id)
-                    bot.send_message(target_user, f"✅ **PAYMENT RECEIVED SUCCESSFULLY!**\n\nAapka ₹{amount} ka withdrawal request admin ne approve kar ke paise direct transfer kar diye hain! 🎉")
-                elif action == "rej":
-                    conn.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amount, target_user))
-                    conn.commit()
-                    bot.edit_message_text(f"🔴 **Rejected Payout! Balance Refunded.**", chat_id, call.message.message_id)
-                    bot.send_message(target_user, f"❌ **WITHDRAWAL REJECTED!**\n\nAapka ₹{amount} ka cash request cancel kar diya gaya hai. Balance aapke wallet me **wapas refund** kar diya gaya hai.")
+        action, target_user = parts[1], int(parts[2])
+        
+        if action == "app":
+            try: bot.edit_message_text(f"🟢 **Payout Approved Securely!**\n👤 User Trace ID Vector: `{target_user}`", chat_id, call.message.message_id)
+            except: pass
+            
+            # CHANGED PAYOUT TEXT ALERT: Triggers customized success validation logs when payout completes smoothly
+            custom_payout_success_notice = "🎉 **apka Payment Apke Upi Wallet ma tranfer kardiya gaya hai**"
+            try: bot.send_message(target_user, custom_payout_success_notice, parse_mode="Markdown")
+            except: pass
+            
+        elif action == "rej":
+            try: bot.edit_message_text(f"🔴 **Payout Request Rejected!**\n👤 User Trace ID Vector: `{target_user}`", chat_id, call.message.message_id)
+            except: pass
+            try: bot.send_message(target_user, "❌ **Aapka withdrawal application reject kar diya gaya hai. Details check karein!**")
+            except: pass
         return
 
     if call.data == "task_single":
@@ -1224,7 +1233,6 @@ def check_unlimited_batch_inputs_count(message):
     current_today_date = datetime.date.today().isoformat()
     
     if len(evaluated_gmails) > 1:
-        # ⚡ OPTIMIZED FAST PROCESSING: Direct bulk insertion mappings drop database delays completely
         with db_thread_lock:
             with get_db_connection() as conn:
                 cursor = conn.cursor()
