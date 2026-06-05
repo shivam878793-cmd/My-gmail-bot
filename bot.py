@@ -815,11 +815,15 @@ def handle_text_messages(message):
 def ask_withdrawal_upi_id_step(message):
     """Captures targeted approved gmails list input text block and chains the UPI query worker next."""
     gmail_addresses_payload = message.text
-    if not gmail_addresses_payload or gmail_addresses_payload.strip() == "":
+    if not gmail_addresses_payload:
         bot.send_message(message.chat.id, "❌ **INPUT INVALID!** Process aborted yrr.")
         return
         
-    # 🔥 GMAIL FORMAT VERIFICATION REGEX SWITCH: Validates presence of explicit target format maps
+    # 🔥 CRITICAL INTERCEPTION UPGRADE: If user hits a main keyboard menu button text, interrupt loop instantly and redirect routing endpoints path
+    if gmail_addresses_payload in ["📨 Get Gmail Task", "💰 Wallet", "👥 Invite & Earn", "💸 Withdraw", "📚 Help & Tutorial", "⭐ Review Task"]:
+        handle_text_messages(message)
+        return
+        
     raw_clean_text = gmail_addresses_payload.strip()
     split_check_items = [g.strip().lower() for g in raw_clean_text.split(',') if g.strip()]
     
@@ -842,11 +846,15 @@ def process_withdrawal_admin_review(message, gmails_data):
     user_id = message.from_user.id
     upi_id = message.text
     
-    if not upi_id or upi_id.strip() == "":
+    if not upi_id:
         bot.send_message(message.chat.id, "❌ **UPI ID cannot be blank!** Operation reset.")
         return
 
-    # 🔥 UPI FORMAT VERIFICATION FILTER: Strictly enforces cross mapping validations strings structure
+    # 🔥 CRITICAL INTERCEPTION UPGRADE: Intercept menu buttons here as well to clear loops instantly on step-2 boundaries
+    if upi_id in ["📨 Get Gmail Task", "💰 Wallet", "👥 Invite & Earn", "💸 Withdraw", "📚 Help & Tutorial", "⭐ Review Task"]:
+        handle_text_messages(message)
+        return
+
     clean_upi_string = upi_id.strip()
     if "@" not in clean_upi_string:
         msg = bot.send_message(message.chat.id, "❌ **UPI FORMAT ERROR!**\n\n⚠️ Aapke bhejey huye string me **@** sign nahi mila. Ek valid UPI ID bhejyein yrr!\n\n👇 Dubara UPI bhejyein (E.g. ronaldo@ybl,9988xxxx@paytm):")
@@ -978,7 +986,6 @@ def handle_callbacks(call):
             try: bot.edit_message_caption(response_caption_block, chat_id, call.message.message_id)
             except: bot.edit_message_text(response_caption_block, chat_id, call.message.message_id)
             
-            # CUSTOMIZED SYSTEM NOTIFICATION UPDATE HOOK: Alerts user precisely via custom specified layout guidelines text
             customized_app_alert = (
                 "🎉 **Whhoo Apka Gmail Approve Kardiya Gaya Hai "
                 "Aab Aap Withdraw Ma Jaker Apna All Approved Gmail Send Karke Upi Id Bhaj Submit Karde**"
@@ -1111,7 +1118,6 @@ def handle_callbacks(call):
             try: bot.edit_message_text(f"🟢 **Payout Approved Securely!**\n👤 User Trace ID Vector: `{target_user}`", chat_id, call.message.message_id)
             except: pass
             
-            # TRIGGER EXPLICIT CUSTOM SPECIFIED PAYMENT SUCCESS MESSAGE CAPTION LOGS:
             custom_payout_success_notice = "🎉 **apka Payment Apke Upi Wallet ma tranfer kardiya gaya hai**"
             try: bot.send_message(target_user, custom_payout_success_notice, parse_mode="Markdown")
             except: pass
