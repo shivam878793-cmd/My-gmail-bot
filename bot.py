@@ -191,7 +191,7 @@ def register_user(user_id, referrer_id=None):
         print(f"Error captured in register_user flow execution maps: {reg_err}")
 
 def check_and_release_expired_tasks():
-    """Releases locked stock based on differentiated expiration rules (10m Single, Multi/Unlimited Exempted)."""
+    """Releases locked stock based on rules. Protects UNLIMITED_MULTI from being automatically wiped out."""
     try:
         with db_thread_lock:
             with get_db_connection() as conn:
@@ -212,7 +212,8 @@ def check_and_release_expired_tasks():
                     
                     if t_type == 'REVIEW_TASK':
                         continue
-                    elif t_type in ['UNLIMITED_MODE', 'UNLIMITED_MULTI']:
+                    # 🔥 IMMUNITY CONTROL LAYER: Unlimited submissions are frozen and never auto-expire or disappear
+                    elif t_type in ['UNLIMITED_MODE', 'UNLIMITED_PREVIEW', 'UNLIMITED_MULTI']:
                         continue
                     else: 
                         if started < limit_single:
@@ -222,7 +223,7 @@ def check_and_release_expired_tasks():
                         if session['task_id_list']:
                             ids = session['task_id_list'].split(',')
                             for t_id in ids:
-                                # Destroy Single Mode task completely upon expiration as per instruction
+                                # Destroy Single Mode task completely upon expiration as per directive
                                 cursor.execute("DELETE FROM task_pool WHERE id = ?", (int(t_id),))
                         
                         cursor.execute("DELETE FROM sessions WHERE id = ?", (sid,))
@@ -282,7 +283,7 @@ def evaluate_and_release_referral_bonus(target_user_id):
                             notification_string = (
                                 "🎉 **REFERRAL REWARD CREDITED!** 🎉\n\n"
                                 f"🤝 Aapke invited member (ID: `{target_user_id}`) ne bot me **2 Tasks successfully complete** kar liye hain!\n"
-                                "💰 **Aapko milta hai: +₹1.00 Cash reward** direct aapke balance profile wallet me! Inviter pipeline logs setup complete! 🚀"
+                                "💰 **Aapko milta hai: +₹1.00 Cash reward** direct aapke balance profile wallet me! 🚀"
                             )
                             bot.send_message(upline_id, notification_string, parse_mode="Markdown")
                         except: pass
@@ -930,7 +931,7 @@ def handle_callbacks(call):
         bot.answer_callback_query(call.id, "❌ Access Blocked! Pehle channels join verify karein.", show_alert=True)
         return
 
-    # 🚀 NEW ADDITION: USER HISTORY CONTROLLER LOOKUP
+    # 📋 GMAIL HISTORY VIEWER DISPLAY LAYER
     if call.data == "view_gmail_history":
         with db_thread_lock:
             with get_db_connection() as conn:
@@ -956,7 +957,7 @@ def handle_callbacks(call):
         bot.answer_callback_query(call.id)
         return
 
-    # 🚀 UPGRADED LAYER: ADJUDICATION CENTRAL CONTROLLER RESOLUTIONS
+    # 🛰️ ADJUDICATION CENTRAL CONTROLLER RESOLUTIONS (DIRECT SYSTEM MAPPED)
     if call.data.startswith("unl_") or call.data.startswith("sng_"):
         parts = call.data.split("_")
         prefix, action, target_user, session_id, history_id = parts[0], parts[1], int(parts[2]), int(parts[3]), int(parts[4])
@@ -981,6 +982,12 @@ def handle_callbacks(call):
                     except: pass
                     
                 elif action == "approve":
+                    # Double submission anti-drain structural logic check
+                    s_chk = conn.execute("SELECT status FROM sessions WHERE id = ?", (session_id,)).fetchone()
+                    if s_chk and s_chk['status'] in ['APPROVED', 'SUCCESS']:
+                        bot.answer_callback_query(call.id, "⚠️ Already Processed/Approved!", show_alert=True)
+                        return
+
                     conn.execute("UPDATE user_history SET status = 'SUCCESS' WHERE id = ?", (history_id,))
                     conn.execute("UPDATE sessions SET status = 'APPROVED' WHERE id = ?", (session_id,))
                     conn.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (reward, target_user))
@@ -988,8 +995,8 @@ def handle_callbacks(call):
                         conn.execute("UPDATE users SET completed_single_tasks = completed_single_tasks + 1 WHERE user_id = ?", (target_user,))
                     conn.commit()
                     
-                    bot.edit_message_caption(f"🟢 **Task Approved! Added points to user account.**", chat_id, call.message.message_id)
-                    try: bot.send_message(target_user, f"🟢 **TASK APPROVED! (SUCCESS)**\n\n📧 Gmail: `{target_gmail}`\n💰 Added: **Reflect Balance Wallet Matrix** (+₹{reward}) successfully updated!")
+                    bot.edit_message_caption(f"🟢 **Task Approved! Wallet balance loaded safely.**", chat_id, call.message.message_id)
+                    try: bot.send_message(target_user, f"🟢 **TASK APPROVED! (SUCCESS)**\n\n📧 Gmail: `{target_gmail}`\n💰 Added: **+₹{reward}** aapke balance profile wallet me successfully add ho chuka hai!")
                     except: pass
                     evaluate_and_release_referral_bonus(target_user)
                     
@@ -999,7 +1006,7 @@ def handle_callbacks(call):
                     conn.commit()
                     
                     bot.edit_message_caption(f"🔴 **Task REJECTED! Status converted to INVALID.**", chat_id, call.message.message_id)
-                    try: bot.send_message(target_user, f"🔴 **TASK REJECTED! (INVALID)**\n\n📧 Gmail: `{target_gmail}`\n❌ Apka account validation matrix check me fail ho gaya hai!")
+                    try: bot.send_message(target_user, f"🔴 **TASK REJECTED! (INVALID)**\n\n📧 Gmail: `{target_gmail}`\n❌ Apka account validation verification check me fail/Reject ho gaya hai!")
                     except: pass
         bot.answer_callback_query(call.id)
         return
@@ -1062,7 +1069,7 @@ def handle_callbacks(call):
                     bot.answer_callback_query(call.id, "🔒 Locked! Admin ne Single Gmail Task option ko filhal temporary closed kiya hai yrr!", show_alert=True)
                     return
 
-                # FIXED: Always pulls oldest sequential available task. Stock never vanishes automatically!
+                # Selected systematically from pool. Stock never vanishes automatically until selected!
                 task = conn.execute("SELECT * FROM task_pool WHERE status = 'AVAILABLE' ORDER BY id ASC LIMIT 1").fetchone()
                 if not task:
                     bot.answer_callback_query(call.id, "⚠️ Stock Empty! Admin se bolo aur load karein.", show_alert=True)
@@ -1139,7 +1146,7 @@ def handle_callbacks(call):
                     elif session['task_type'] == 'UNLIMITED_MODE':
                         conn.execute("DELETE FROM sessions WHERE id = ?", (sid,))
                     else:
-                        # 🚀 NEW CRITICAL FIX: Single mode tasks are DESTROYED from the database upon cancellation, they NEVER go back to stock!
+                        # 🚀 CRITICAL FIX: Single mode tasks are DESTROYED from the database upon cancellation, they NEVER go back to stock!
                         ids = session['task_id_list'].split(',')
                         for t_id in ids:
                             conn.execute("DELETE FROM task_pool WHERE id = ?", (int(t_id),))
@@ -1169,7 +1176,7 @@ def handle_callbacks(call):
                             return
                     conn.commit()
 
-        bot.edit_message_text("❌ **Task Cancelled! Item successfully dropped/destroyed from live stock configuration limits.**", chat_id, call.message.message_id)
+        bot.edit_message_text("❌ **Task Cancelled! Item successfully dropped/destroyed from live stock pool.**", chat_id, call.message.message_id)
 
     elif call.data.startswith("done_"):
         sid = int(call.data.split('_')[1])
@@ -1182,12 +1189,12 @@ def handle_callbacks(call):
 # ──────────────────────────────────────────────────────────────────────
 
 def capture_unlimited_text_credentials(message):
-    """Saves raw text credentials inside temporary database spaces and triggers screens routing mapping matrices handles."""
+    """Saves text credentials and splits multi-lines to bypass screenshot requirements with real-time commits."""
     user_id = message.from_user.id
     raw_input = message.text
     
     if not raw_input:
-        bot.send_message(message.chat.id, "❌ **INPUT ERROR!**\n\n⚠️ Kripya details ko sahi text template format me hi send karein. Process reset.")
+        bot.send_message(message.chat.id, "❌ **INPUT ERROR!** Kripya details ko sahi text template format me hi send karein. Process reset.")
         return
         
     lines = [line.strip() for line in raw_input.strip().split("\n") if line.strip()]
@@ -1210,10 +1217,11 @@ def capture_unlimited_text_credentials(message):
         msg = bot.send_message(message.chat.id, "📸 **Ab is create kiye huye account ka clear image screenshot proof send karein:**")
         bot.register_next_step_handler(msg, process_final_channel_proof, sid)
         
-    # CASE 2: Multi-Line Entries Entry -> Completely bypasses screenshot requirement loops, maps individually to admin
+    # CASE 2: Multi-Line Entries Entry -> Completely bypasses screenshot requirement loops, maps individually to admin with instant commits
     else:
-        bot.send_message(message.chat.id, "⏳ **Multiple credentials detected! Screenshot proof requirements bypassed successfully. Pushing elements one-by-one to core verification channels...**")
+        bot.send_message(message.chat.id, "⏳ **Multiple credentials detected! Real-time session locks active. Pushing data to validation panel...**")
         
+        # FIXED CRITICAL IMMUNITY: Commits inside the loop dynamically to link each button context accurately
         for gmail_item in lines:
             with db_thread_lock:
                 with get_db_connection() as conn:
@@ -1224,7 +1232,7 @@ def capture_unlimited_text_credentials(message):
                     cursor = conn.cursor()
                     cursor.execute("INSERT INTO sessions (user_id, task_type, task_id_list, started_at, status) VALUES (?, 'UNLIMITED_MULTI', ?, ?, 'PENDING')", (user_id, gmail_item, current_time))
                     sid = cursor.lastrowid
-                    conn.commit()
+                    conn.commit() # 🔥 Real-time write lock commitment
             
             # Construct standalone control panel per line record logs context
             admin_markup = types.InlineKeyboardMarkup()
@@ -1243,11 +1251,11 @@ def capture_unlimited_text_credentials(message):
             )
             bot.send_message(GMAIL_CHANNEL_ID, caption_text, reply_markup=admin_markup, parse_mode="Markdown")
             
-        bot.send_message(message.chat.id, "✅ **Aapke saare Gmails successfully check parameters block panel me submit ho gaye hain! Live changes track karne ke liye 'Your Gmail History' control page check karein yrr.** 🚀")
+        bot.send_message(message.chat.id, "✅ **Aapke saare Gmails successfully check parameters panel me submit ho gaye hain! Live changes track karne ke liye 'Your Gmail History' control page check karein yrr.** 🚀")
 
 # ──────────────────────────────────────────────────────────────────────
 # 🛰️ SECTION 12: SERVICE POLICE INITIALIZATION POLLING LAYER
 # ──────────────────────────────────────────────────────────────────────
 
-print("🚀 PRODUCTION MASTER ENGINE ONLINE: Full length code compiled, no shortcuts. Polling live...")
+print("🚀 PRODUCTION MASTER ENGINE ONLINE: Full length structural code completely merged. Polling live...")
 bot.infinity_polling()
