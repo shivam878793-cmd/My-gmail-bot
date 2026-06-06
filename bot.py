@@ -324,8 +324,9 @@ def process_final_channel_proof(message, session_id):
         
     elif session['task_type'] == 'REVIEW_TASK':
         review_target_id = int(session['task_id_list'])
-        with get_db_connection() as conn:
-            review_data = conn.execute("SELECT review_link, review_msg FROM review_pool WHERE id = ?", (review_target_id,)).fetchone()
+        with db_thread_lock:
+            with get_db_connection() as conn:
+                review_data = conn.execute("SELECT review_link, review_msg FROM review_pool WHERE id = ?", (review_target_id,)).fetchone()
         target_url = review_data['review_link'] if review_data else "N/A"
         
         admin_markup = types.InlineKeyboardMarkup()
@@ -641,60 +642,11 @@ def admin_set_help_tutorial(message):
             return
         with db_thread_lock:
             with get_db_connection() as conn:
-                # 🔥 FIXED HELP INJECTION: Force secure data overwriting update layout parameters safely
                 conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('tutorial', ?)", (new_content,))
                 conn.commit()
         bot.send_message(ADMIN_ID, "✅ **Help & Tutorial message updated in database successfully!**")
     except Exception as e:
         bot.send_message(ADMIN_ID, f"❌ **Set Help Error:** {e}")
-
-@bot.message_handler(commands=['broadcast'])
-def admin_broadcast_flexible(message):
-    if message.from_user.id != ADMIN_ID: return
-    text_to_send = message.text.replace("/broadcast", "").strip()
-    if not text_to_send:
-        bot.send_message(ADMIN_ID, "❌ **Format:** `/broadcast Write any global message here`")
-        return
-    try:
-        with db_thread_lock:
-            with get_db_connection() as conn:
-                users = conn.execute("SELECT user_id FROM users WHERE is_banned = 0").fetchall()
-        
-        count = 0
-        failed_count = 0
-        status_msg = bot.send_message(ADMIN_ID, f"📢 **Broadcast Shuru Ho Gaya Hai...**\nTotal Users in DB: {len(users)}")
-        
-        for u in users:
-            try:
-                bot.send_message(chat_id=u['user_id'], text=text_to_send, disable_web_page_preview=False)
-                count += 1
-                if count % 20 == 0: time.sleep(1.0)
-                else: time.sleep(0.05)
-            except telebot.apihelper.ApiTelegramException: failed_count += 1; continue
-            except Exception: failed_count += 1; continue
-                
-        bot.edit_message_text(
-            chat_id=ADMIN_ID,
-            message_id=status_msg.message_id,
-            text=f"📢 **Broadcast Complete Successfully!**\n\n✅ **Delivered To:** `{count}` users\n❌ **Failed/Blocked:** `{failed_count}` users",
-            parse_mode="Markdown"
-        )
-    except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ **Broadcast Engine Failure:** {e}")
-
-@bot.message_handler(commands=['checkuser'])
-def admin_check_user(message):
-    if message.from_user.id != ADMIN_ID: return
-    try:
-        target_uid = message.text.replace("/checkuser", "").strip()
-        if not target_uid or not target_uid.isdigit(): return
-        target_uid = int(target_uid)
-        with db_thread_lock:
-            with get_db_connection() as conn:
-                user = conn.execute("SELECT * FROM users WHERE user_id = ?", (target_uid,)).fetchone()
-        if user:
-            bot.send_message(ADMIN_ID, f"🔍 **User Info:**\n👤 ID: `{target_uid}`\n💰 Balance: ₹{user['balance']}\n✅ Completed: {user['completed_single_tasks']}\n⚠️ Cancel Rows: {user['cancel_count']}\n🚫 Ban Status: {user['is_banned']}")
-    except Exception as e: pass
 
 # ──────────────────────────────────────────────────────────────────────
 # 🛰️ SECTION 9: INTERACTIVE GRAPHICAL CORE CONTROLLER LOGIC
@@ -768,7 +720,6 @@ def handle_text_messages(message):
         bot.register_next_step_handler(msg, ask_withdrawal_upi_id_step)
             
     elif message.text == "📚 Help & Tutorial":
-        # 🔥 FIXED HELP TEXT RETRIEVAL HOOK: Direct parameters database execution mapping lines deployed safely
         with db_thread_lock:
             with get_db_connection() as conn:
                 res = conn.execute("SELECT value FROM settings WHERE key = 'tutorial'").fetchone()
@@ -806,8 +757,7 @@ def handle_text_messages(message):
         markup = types.InlineKeyboardMarkup(row_width=2)
         markup.add(
             types.InlineKeyboardButton("✅ Done (Submit Proof)", callback_data=f"done_{sid}"),
-            types.InlineKeyboardButton("❌ Cancel Task", callback_data=f"cancel_{sid}")
-        )
+            types.InlineKeyboardButton("❌ Cancel Task", callback_data=f"cancel_{sid}"))
         bot.send_message(message.chat.id, review_dashboard_text, parse_mode="Markdown", reply_markup=markup)
 
 # ──────────────────────────────────────────────────────────────────────
@@ -890,7 +840,7 @@ def handle_callbacks(call):
     user_id = call.from_user.id
     chat_id = call.message.chat.id
 
-    # 🔥 FIXED DYNAMIC GMAIL HISTORY MODULE TRIGGER OVERRIDE: Registered at zero-index position to process instant click triggers crash free
+    # 🔥 HOT-PATCH RE-ROUTE INTEGRATION: Intercept history click event immediately at absolute top level structure boundaries
     if call.data == "history_dashboard_loop":
         current_today_date = datetime.date.today().isoformat()
         
